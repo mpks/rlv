@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>DIALS Reciprocal Lattice Viewer</title>
+<script type="importmap">
+{
+  "imports": {
+    "three":
+      "https://unpkg.com/three@0.157.0/build/three.module.js",
+    "three/addons/":
+      "https://unpkg.com/three@0.157.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  background: #0d0d14;
+  color: #ccc;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 36px 1fr 22px;
+  grid-template-areas:
+    "sidebar toolbar"
+    "sidebar canvas"
+    "sidebar statusbar";
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- sidebar ---- */
+#sidebar {
+  grid-area: sidebar;
+  background: #111118;
+  border-right: 1px solid #2a2a3a;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#sidebar-header { padding: 10px 12px 8px; border-bottom: 1px solid #2a2a3a; }
+#sidebar-header h1 { font-size: 14px; font-weight: 500; color: #eee; }
+#sidebar-header p  { font-size: 11px; color: #666; margin-top: 2px; }
+#sidebar-body { flex: 1; overflow-y: auto; padding: 6px 0 16px; }
+
+.section-label {
+  font-size: 10px; font-weight: 600; color: #555;
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 10px 12px 4px;
+}
+.row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 12px; gap: 8px;
+}
+.row label { font-size: 12px; color: #aaa; flex: 1; min-width: 0; }
+
+.toggle {
+  width: 28px; height: 16px; background: #333; border-radius: 8px;
+  position: relative; cursor: pointer; flex-shrink: 0; transition: background .2s;
+}
+.toggle.on { background: #185FA5; }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; background: #fff;
+  border-radius: 50%; transition: transform .2s;
+}
+.toggle.on::after { transform: translateX(12px); }
+
+input[type=range] { width: 70px; accent-color: #185FA5; cursor: pointer; }
+.val { font-size: 11px; color: #666; min-width: 34px; text-align: right; }
+select {
+  font-size: 11px; background: #1a1a26; border: 1px solid #333;
+  border-radius: 4px; padding: 2px 5px; color: #ccc;
+  max-width: 100px; cursor: pointer;
+}
+
+.exp-row { display: flex; align-items: center; gap: 6px; padding: 4px 12px; }
+.exp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.exp-label { font-size: 11px; color: #aaa; flex: 1; }
+.exp-count { font-size: 10px; color: #555; }
+
+.chip-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 6px; }
+.chip {
+  font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  border: 1px solid #333; color: #888; cursor: pointer; user-select: none;
+}
+.chip.on { background: #152a42; color: #7ab8f5; border-color: #185FA5; }
+
+/* ---- Ewald panel ---- */
+#ewald-panel {
+  background: #0e0e1a; border-top: 1px solid #2a2a3a;
+  padding: 8px 12px 10px; flex-shrink: 0;
+}
+#ewald-panel.hidden { display: none; }
+#ewald-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+#ewald-header span {
+  font-size: 10px; font-weight: 600; color: #555;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+#ewald-controls { display: flex; align-items: center; gap: 6px; }
+#img-slider { flex: 1; accent-color: #e69f00; }
+#img-label {
+  font-size: 12px; color: #e69f00; min-width: 42px;
+  text-align: right; font-family: monospace;
+}
+#phi-label { font-size: 10px; color: #666; margin-top: 3px; font-family: monospace; }
+#ewald-toggles { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+#ewald-toggles label {
+  font-size: 11px; color: #aaa; display: flex; align-items: center;
+  gap: 4px; cursor: pointer;
+}
+
+/* ---- toolbar ---- */
+#toolbar {
+  grid-area: toolbar;
+  background: #111118; border-bottom: 1px solid #2a2a3a;
+  display: flex; align-items: center; gap: 5px; padding: 0 10px;
+}
+.tbtn {
+  font-size: 11px; padding: 3px 9px; border: 1px solid #333;
+  border-radius: 5px; color: #999; cursor: pointer; background: transparent;
+  white-space: nowrap; transition: background .15s;
+}
+.tbtn:hover { background: #1e1e2e; }
+.tbtn.active { background: #152a42; color: #7ab8f5; border-color: #185FA5; }
+
+/* ---- canvas ---- */
+#canvas-wrap {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  background: #0d0d14;
+}
+canvas { display: block; width: 100% !important; height: 100% !important; }
+
+/* ---- overlays inside canvas ---- */
+#axes {
+  position: absolute; bottom: 10px; left: 10px;
+  font-size: 11px; font-family: monospace; pointer-events: none;
+}
+.ax { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+.ax-line { width: 20px; height: 2px; border-radius: 1px; }
+
+#tooltip {
+  position: absolute; display: none; pointer-events: none;
+  background: rgba(10,10,20,.92); border: 1px solid #2a2a3a;
+  border-radius: 7px; padding: 8px 11px; font-size: 11px;
+  color: #bbb; line-height: 1.65; min-width: 160px; max-width: 240px;
+}
+#tooltip .hkl {
+  font-size: 13px; font-weight: 600; color: #fff;
+  font-family: monospace; margin-bottom: 5px;
+}
+#tooltip table { border-collapse: collapse; width: 100%; }
+#tooltip td { padding: 1px 0; }
+#tooltip td:first-child {
+  color: #666; padding-right: 10px; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+#tooltip td:last-child { color: #ddd; font-family: monospace; text-align: right; }
+
+/* ---- statusbar ---- */
+#statusbar {
+  grid-area: statusbar;
+  background: #0d0d14; border-top: 1px solid #2a2a3a;
+  display: flex; align-items: center; padding: 0 10px; gap: 16px;
+  font-size: 10px; color: #555;
+}
+.sdot {
+  width: 6px; height: 6px; background: #1D9E75; border-radius: 50%;
+  display: inline-block; margin-right: 4px;
+}
+
+#loading {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; background: #0d0d14; z-index: 10;
+  font-size: 14px; color: #555;
+}
+
+</style>
+</head>
+<body>
+
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>DIALS RLV</h1>
+    <p id="info-line">Loading…</p>
+  </div>
+  <div id="sidebar-body">
+
+    <div class="section-label">Experiments</div>
+    <div id="exp-list"></div>
+
+    <div class="section-label">Display</div>
+    <div class="row">
+      <label>Colour by</label>
+      <select id="color-by">
+        <option value="experiment">Experiment</option>
+        <option value="resolution">Resolution</option>
+        <option value="intensity">Intensity</option>
+        <option value="ioversigma">I/σ</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Point size</label>
+      <input type="range" id="pt-size" min="1" max="12" value="6">
+      <span class="val">3</span>
+    </div>
+    <div class="row">
+      <label>Opacity</label>
+      <input type="range" id="opacity" min="5" max="100" value="90">
+      <span class="val">90%</span>
+    </div>
+    <div class="row"><label>Show indexed</label>
+      <div class="toggle on" id="tog-indexed"></div></div>
+    <div class="row"><label>Show unindexed</label>
+      <div class="toggle on" id="tog-unindexed"></div></div>
+    <div class="row"><label>Show integrated</label>
+      <div class="toggle on" id="tog-integrated"></div></div>
+
+    <div class="section-label">Overlays</div>
+    <div class="row"><label>Reciprocal cell</label>
+      <div class="toggle on" id="tog-cell"></div></div>
+    <div class="row"><label>Rotation axis</label>
+      <div class="toggle" id="tog-axis"></div></div>
+    <div class="row"><label>Beam vector (exp 0)</label>
+      <div class="toggle" id="tog-beam"></div></div>
+    <div class="row"><label>kx ky kz axes</label>
+      <div class="toggle" id="tog-xyz"></div></div>
+    <div class="row"><label>Real space a b c</label>
+      <div class="toggle on" id="tog-cell-orient"></div></div>
+    <div class="row"><label>Detector</label>
+      <div class="toggle" id="tog-detector"></div></div>
+
+    <div class="section-label">Annotations</div>
+    <div class="row"><label>Miller indices</label>
+      <div class="toggle" id="tog-ann-hkl"></div></div>
+    <div class="row"><label>Resolution (Å)</label>
+      <div class="toggle" id="tog-ann-res"></div></div>
+    <div class="row">
+      <label>Label size</label>
+      <input type="range" id="ann-size" min="10" max="52" step="2" value="18">
+      <span class="val">18px</span>
+    </div>
+
+    <div class="section-label">Filter</div>
+    <div class="row"><label>d-min (Å)</label>
+      <input type="range" id="filt-dmin" min="0" max="100" step="0.1" value="0">
+      <span class="val">—</span>
+    </div>
+    <div class="row"><label>d-max (Å)</label>
+      <input type="range" id="filt-dmax" min="0" max="100" step="0.1" value="100">
+      <span class="val">—</span>
+    </div>
+    <div class="row"><label>I/σ min</label>
+      <input type="range" id="filt-ios" min="0" max="50" step="0.5" value="0">
+      <span class="val">0</span>
+    </div>
+
+    <div class="section-label">Tooltip shows</div>
+    <div class="chip-grid" id="tooltip-chips">
+      <div class="chip on" data-field="hkl">hkl</div>
+      <div class="chip on" data-field="d">d (Å)</div>
+      <div class="chip on" data-field="ios">I/σ</div>
+      <div class="chip on" data-field="kxyz">kx ky kz</div>
+      <div class="chip on" data-field="xyz">x y z (px)</div>
+      <div class="chip on" data-field="intensity">I</div>
+      <div class="chip" data-field="panel">panel</div>
+      <div class="chip" data-field="id">exp id</div>
+    </div>
+
+  </div>
+
+  <div id="ewald-panel" class="hidden">
+    <div id="ewald-header">
+      <span>Image / Ewald sphere</span>
+      <div class="toggle on" id="tog-ewald-master"></div>
+    </div>
+    <div id="ewald-controls">
+      <input type="range" id="img-slider" min="1" max="100" step="1" value="1">
+      <span id="img-label">#1</span>
+    </div>
+    <div id="phi-label">φ = —</div>
+    <div id="ewald-toggles">
+      <label><input type="checkbox" id="chk-ewald-sphere" checked> Ewald sphere</label>
+      <label><input type="checkbox" id="chk-highlight" checked> Highlight spots</label>
+
+      <label><input type="checkbox" id="chk-hl-hkl" checked> hkl labels</label>
+    </div>
+  </div>
+</div>
+
+<div id="toolbar">
+  <button class="tbtn active" id="btn-rotate">Rotate</button>
+  <button class="tbtn" id="btn-pan">Pan</button>
+  <div style="width:1px;height:18px;background:#2a2a3a;margin:0 3px"></div>
+  <button class="tbtn" id="btn-ab">a*b*</button>
+  <button class="tbtn" id="btn-ac">a*c*</button>
+  <button class="tbtn" id="btn-bc">b*c*</button>
+  <div style="width:1px;height:18px;background:#2a2a3a;margin:0 3px"></div>
+  <button class="tbtn" id="btn-along-a">→a*</button>
+  <button class="tbtn" id="btn-along-b">→b*</button>
+  <button class="tbtn" id="btn-along-c">→c*</button>
+  <button class="tbtn" id="btn-rot-axis">⊥rot</button>
+  <div style="width:1px;height:18px;background:#2a2a3a;margin:0 3px"></div>
+  <button class="tbtn" id="btn-along-da">→a</button>
+  <button class="tbtn" id="btn-along-db">→b</button>
+  <button class="tbtn" id="btn-along-dc">→c</button>
+  <div style="width:1px;height:18px;background:#2a2a3a;margin:0 3px"></div>
+  <button class="tbtn" id="btn-select">Select</button>
+  <button class="tbtn" id="btn-clear-sel" style="color:#ff6b6b">Clear sel.</button>
+  <div style="flex:1"></div>
+  <button class="tbtn active" id="btn-ortho">Perspective</button>
+  <button class="tbtn" id="btn-reset">Reset</button>
+  <button class="tbtn" id="btn-screenshot">Screenshot</button>
+  <label class="tbtn" style="cursor:pointer;color:#7ab8f5">Open…<input type="file" accept=".json,.gz" style="display:none" onchange="readRLVFile(this.files[0])"></label>
+</div>
+
+<div id="canvas-wrap">
+  <div id="loading">Loading data…</div>
+  <div id="axes">
+    <div class="ax"><div class="ax-line" style="background:#e74c3c"></div><span style="color:#e74c3c">a*</span></div>
+    <div class="ax"><div class="ax-line" style="background:#2ecc71"></div><span style="color:#2ecc71">b*</span></div>
+    <div class="ax"><div class="ax-line" style="background:#3498db"></div><span style="color:#3498db">c*</span></div>
+  </div>
+  <div id="tooltip">
+    <div class="hkl" id="tt-hkl"></div>
+    <table id="tt-table"></table>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span><span class="sdot"></span><span id="status-msg">Ready</span></span>
+  <span id="status-count"></span>
+  <span>Drag to rotate · Scroll to zoom · Middle-drag to pan</span>
+</div>
+
+<script type="module" src="/app.js"></script>
+
+<script type="module">
+
+import * as THREE from 'three';
+import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+
+// ============================================================
+// Globals
+// ============================================================
+let scene, camera, renderer, controls;
+let orthoCam   = null;    // OrthographicCamera for isometric view
+let isOrtho    = false;   // current projection mode
+let pointsObject  = null;
+let cellLines     = [];
+let axisLine      = null;
+let beamLine      = null;
+let xyzAxesGroup  = null;   // lab X Y Z arrows
+let annSprites    = [];
+let annHLSprites  = [];   // hkl labels for image-highlighted spots
+let annSelSprites = [];   // hkl labels for selected spots
+let selectedSet   = new Set();  // indices of user-selected spots
+let selectMode    = false;      // true when Select toolbar button is active
+let selSquares    = null;       // THREE.Points for red square markers
+let ewaldGroup      = null;
+let cellOrientGroup  = null;  // a* b* c* arrows rotating with crystal
+let detectorGroup    = null;  // detector rectangle rotating with Ewald
+let rawData         = null;
+
+let ewaldMasterOn  = true;
+let s0unit         = new THREE.Vector3();
+let rotAxis        = new THREE.Vector3(0, 1, 0);
+let ewaldRadius    = 0;
+let currentImage   = 1;
+let scanInfo       = null;
+
+let tooltipFields  = new Set(['hkl','d','ios','kxyz','xyz','intensity']);
+// group visibility — written only in toggleGroup
+let groupVisible   = { indexed: true, unindexed: true, integrated: true };
+let activeAnnotations = new Set();
+
+const EXP_COLORS_HEX = [
+  '#ffffff','#e69f00','#56b4e9','#009e73',
+  '#f0e442','#0072b2','#d55e00','#cc79a7'
+];
+
+// ============================================================
+// Boot
+// ============================================================
+// Standalone boot: works both when served
+// by new_rlv.py and as a plain HTML file.
+let _appStarted = false;
+
+function _startApp() {
+  if (_appStarted) return;
+  _appStarted = true;
+  document.getElementById('loading')
+    .style.display = 'none';
+  buildScene();
+  buildSidebar();
+  bindUI();
+  setupEwaldPanel();
+  animate();
+  switchProjection(
+    document.getElementById('btn-ortho'));
+}
+
+function _loadText(text) {
+  try { rawData = JSON.parse(text); }
+  catch(e) {
+    document.getElementById('loading')
+      .textContent = 'Parse error: ' + e;
+    return;
+  }
+  if (_appStarted) {
+    // reload: swap out the points
+    if (pointsObject) {
+      scene.remove(pointsObject);
+      pointsObject.geometry.dispose();
+      pointsObject.material.dispose();
+      pointsObject = null;
+    }
+    document.getElementById('loading')
+      .style.display = 'none';
+    buildScene();
+    buildSidebar();
+    setupEwaldPanel();
+  } else {
+    _startApp();
+  }
+}
+
+function readRLVFile(file) {
+  if (!file) return;
+  const ld =
+    document.getElementById('loading');
+  ld.style.display = 'flex';
+  ld.textContent = 'Reading …';
+  if (file.name.endsWith('.gz')) {
+    file.arrayBuffer().then(buf => {
+      const ds =
+        new DecompressionStream('gzip');
+      const w = ds.writable.getWriter();
+      const r = ds.readable.getReader();
+      const chunks = [];
+      w.write(buf); w.close();
+      const pump = () =>
+        r.read().then(({done, value}) => {
+          if (done)
+            return new Blob(chunks)
+              .text().then(_loadText);
+          chunks.push(value);
+          return pump();
+        });
+      pump().catch(e =>
+        { ld.textContent = 'Error: '+e; });
+    });
+  } else {
+    const fr = new FileReader();
+    fr.onload = e =>
+      _loadText(e.target.result);
+    fr.onerror = () =>
+      { ld.textContent = 'Read error'; };
+    fr.readAsText(file);
+  }
+}
+window.readRLVFile = readRLVFile;
+
+window.addEventListener('load', async () => {
+  initThree();
+
+  // drag-and-drop anywhere on page
+  document.addEventListener(
+    'dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (f) readRLVFile(f);
+  });
+
+  // try server first (new_rlv.py mode)
+  try {
+    const r = await fetch('/data.json');
+    if (r.ok) {
+      rawData = await r.json();
+      _startApp();
+      return;
+    }
+  } catch (_) {}
+
+  // standalone mode: show open splash
+  document.getElementById('loading')
+    .innerHTML = `
+<div style="text-align:center;color:#aaa">
+  <div style="font-size:16px;
+              margin-bottom:12px">
+    DIALS Reciprocal Lattice Viewer
+  </div>
+  <div style="font-size:13px;color:#555;
+              margin-bottom:16px">
+    Open a .rlv.json file to begin
+  </div>
+  <label style="padding:8px 20px;
+    border:1px solid #185FA5;
+    border-radius:6px;
+    background:#152a42;
+    color:#7ab8f5;
+    font-size:13px;cursor:pointer">
+    Open .rlv.json…
+    <input type="file" accept=".json,.gz"
+      style="display:none"
+      onchange="readRLVFile(
+        this.files[0])">
+  </label>
+  <div style="font-size:11px;color:#444;
+              margin-top:12px">
+    Or drag and drop a file here
+  </div>
+</div>`;
+});
+
+// ============================================================
+// Three.js init — TrackballControls, no mode switching needed
+// (left = rotate, middle = zoom, right = pan always)
+// ============================================================
+function initThree() {
+  const wrap = document.getElementById('canvas-wrap');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d0d14);
+
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100000);
+  camera.position.set(0, 0, 8000);
+  // Orthographic camera — frustum set properly in switchProjection()
+  orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100000);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  wrap.appendChild(renderer.domElement);
+
+  controls = new TrackballControls(camera, renderer.domElement);
+  controls.rotateSpeed  = 3.0;
+  controls.zoomSpeed    = 1.2;
+  controls.panSpeed     = 0.8;
+  controls.staticMoving = true;
+
+  window.addEventListener('resize', () => {
+    const w2 = wrap.clientWidth, h2 = wrap.clientHeight;
+    camera.aspect = w2 / h2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w2, h2);
+    controls.handleResize();
+  });
+
+  renderer.domElement.addEventListener('mousemove', onMouseMove);
+  renderer.domElement.addEventListener('click', handleSelectClick);
+}
+
+// ============================================================
+// Build scene
+// ============================================================
+function buildScene() {
+  const d = rawData, n = d.points.length;
+  const pos = new Float32Array(n * 3);
+  const col = new Float32Array(n * 3);
+  const alp = new Float32Array(n).fill(1);
+
+  for (let i = 0; i < n; i++) {
+    pos[i*3]   = d.points[i][0];
+    pos[i*3+1] = d.points[i][1];
+    pos[i*3+2] = d.points[i][2];
+    col[i*3]   = d.colors[i][0];
+    col[i*3+1] = d.colors[i][1];
+    col[i*3+2] = d.colors[i][2];
+  }
+
+  const hl  = new Float32Array(n).fill(0);   // 0=normal, 1=highlighted
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position',  new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color',     new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('alpha',     new THREE.BufferAttribute(alp, 1));
+  geo.setAttribute('highlight', new THREE.BufferAttribute(hl,  1));
+
+  const mat = new THREE.ShaderMaterial({
+    vertexColors: true, transparent: true, depthWrite: false,
+    uniforms: {
+      pointSize:     { value: 6.0 },
+      globalOpacity: { value: 0.9 },
+      hlSize:        { value: 6.0 },   // highlighted point size multiplier
+    },
+    vertexShader: [
+      'attribute float alpha;',
+      'attribute float highlight;',
+      'varying vec3  vColor;',
+      'varying float vAlpha;',
+      'varying float vHL;',
+      'uniform float pointSize;',
+      'uniform float hlSize;',
+      'void main() {',
+      '  vColor = color;',
+      '  vAlpha = alpha;',
+      '  vHL    = highlight;',
+      '  gl_PointSize = highlight > 0.5 ? pointSize * hlSize / 3.0 : pointSize;',
+      '  gl_Position  = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      '}'
+    ].join('\n'),
+    fragmentShader: [
+      'varying vec3  vColor;',
+      'varying float vAlpha;',
+      'varying float vHL;',
+      'uniform float globalOpacity;',
+      'void main() {',
+      '  vec2 uv = gl_PointCoord - 0.5;',
+      '  if (dot(uv,uv) > 0.25) discard;',
+      '  vec3  col = vHL > 0.5 ? vec3(0.0, 1.0, 0.8) : vColor;',
+      '  float a   = vHL > 0.5 ? 1.0 : vAlpha * globalOpacity;',
+      '  gl_FragColor = vec4(col, a);',
+      '}'
+    ].join('\n')
+  });
+
+  pointsObject = new THREE.Points(geo, mat);
+  scene.add(pointsObject);
+
+  buildCellLines();
+  buildAxisLine();
+  buildBeamLine();
+  buildXYZAxes();
+  buildCellOrientAxes();
+  buildSelSquares();
+  buildEwaldObjects();
+  buildDetector();
+
+  fitCamera();
+  document.getElementById('status-count').textContent =
+    n.toLocaleString() + ' spots';
+}
+
+// orthoZoom: scale factor for the orthographic frustum (1 = fit-to-data).
+// Scroll wheel in ortho mode adjusts this instead of moving the camera.
+let orthoZoom = 1.0;
+
+function syncOrthoCam() {
+  // Mirror perspective camera pose into orthoCam, then set frustum.
+  // TrackballControls always drives the perspective camera; orthoCam
+  // just copies its orientation each frame so rotation/pan work normally.
+  if (!isOrtho || !orthoCam) return;
+  orthoCam.position.copy(camera.position);
+  orthoCam.quaternion.copy(camera.quaternion);
+  orthoCam.up.copy(camera.up);
+
+  const wrap   = document.getElementById('canvas-wrap');
+  const aspect = wrap.clientWidth / wrap.clientHeight;
+  const bbox   = new THREE.Box3().setFromObject(pointsObject);
+  const size   = bbox.getSize(new THREE.Vector3()).length();
+  const half   = (size * 0.6) / orthoZoom;
+  orthoCam.left   = -half * aspect;
+  orthoCam.right  =  half * aspect;
+  orthoCam.top    =  half;
+  orthoCam.bottom = -half;
+  orthoCam.near   =  size * 0.001;
+  orthoCam.far    =  size * 10;
+  orthoCam.updateProjectionMatrix();
+}
+
+function switchProjection(btn) {
+  isOrtho = !isOrtho;
+  btn.classList.toggle('active', isOrtho);
+  btn.textContent = isOrtho ? 'Perspective' : 'Isometric';
+
+  if (isOrtho) {
+    orthoZoom = 1.0;
+    // Centre the perspective camera on the data so ortho view is centred too
+    const bbox   = new THREE.Box3().setFromObject(pointsObject);
+    const center = new THREE.Vector3(); bbox.getCenter(center);
+    const size   = bbox.getSize(new THREE.Vector3()).length();
+    controls.target.copy(center);
+    // Position camera at current distance but looking at center
+    const dir = camera.position.clone().sub(center).normalize();
+    camera.position.copy(center).addScaledVector(dir, size * 1.2);
+    camera.updateProjectionMatrix();
+    controls.update();
+    // Intercept wheel events for ortho zoom
+    renderer.domElement.addEventListener('wheel', onOrthoWheel, { passive: false });
+  } else {
+    renderer.domElement.removeEventListener('wheel', onOrthoWheel);
+    // Restore perspective camera near/far
+    const bbox = new THREE.Box3().setFromObject(pointsObject);
+    const size = bbox.getSize(new THREE.Vector3()).length();
+    camera.near = size * 0.001;
+    camera.far  = size * 10;
+    camera.updateProjectionMatrix();
+  }
+}
+
+function onOrthoWheel(evt) {
+  // Scale the ortho frustum on scroll — zoom in/out without moving camera
+  evt.preventDefault();
+  const delta = evt.deltaY > 0 ? 1.1 : 0.9;
+  orthoZoom = Math.max(0.05, Math.min(50, orthoZoom / delta));
+}
+
+function activeCamera() { return isOrtho ? orthoCam : camera; }
+
+function fitCamera() {
+  const bbox   = new THREE.Box3().setFromObject(pointsObject);
+  const center = new THREE.Vector3();
+  bbox.getCenter(center);
+  const size = bbox.getSize(new THREE.Vector3()).length();
+  controls.target.copy(center);
+  const cam = activeCamera();
+  cam.position.copy(center).add(new THREE.Vector3(0, 0, size * 1.2));
+  if (cam.isPerspectiveCamera) {
+    cam.near = size * 0.001; cam.far = size * 10;
+    cam.updateProjectionMatrix();
+  }
+  controls.update();
+}
+
+// ============================================================
+// Reciprocal cell / axis / beam
+// ============================================================
+function buildCellLines() {
+  cellLines.forEach(l => scene.remove(l)); cellLines = [];
+  if (!rawData.settings.show_reciprocal_cell) return;
+  rawData.experiments.forEach((exp, ei) => {
+    if (!exp.recip_latt_vectors) return;
+    const [a, b, c] = exp.recip_latt_vectors;
+    const av = new THREE.Vector3(...a);
+    const bv = new THREE.Vector3(...b);
+    const cv = new THREE.Vector3(...c);
+    const O  = new THREE.Vector3();
+    const far = av.clone().add(bv).add(cv);
+    const v = [];
+    const L = (p, q) => { v.push(...p.toArray(), ...q.toArray()); };
+    L(O,av); L(O,bv); L(O,cv);
+    L(av, av.clone().add(bv)); L(av, av.clone().add(cv));
+    L(bv, bv.clone().add(av)); L(bv, bv.clone().add(cv));
+    L(cv, cv.clone().add(av)); L(cv, cv.clone().add(bv));
+    L(far, far.clone().sub(av));
+    L(far, far.clone().sub(bv));
+    L(far, far.clone().sub(cv));
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    const color = new THREE.Color(EXP_COLORS_HEX[(ei+1) % EXP_COLORS_HEX.length]);
+    const lines = new THREE.LineSegments(geo,
+      new THREE.LineBasicMaterial({ color }));
+    lines.visible = document.getElementById('tog-cell').classList.contains('on');
+    scene.add(lines); cellLines.push(lines);
+  });
+  // store reference on scene for toggleOverlay
+  scene.cellLines = cellLines;
+}
+
+function getSceneScale() {
+  if (!pointsObject) return 5000;
+  return new THREE.Box3().setFromObject(pointsObject)
+                         .getSize(new THREE.Vector3()).length() * 0.6;
+}
+
+function buildAxisLine() {
+  if (axisLine) scene.remove(axisLine);
+  axisLine = null;
+  const exp = rawData.experiments[0];
+  if (!exp?.rotation_axis) return;
+  const sc = getSceneScale(), ax = exp.rotation_axis;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position',
+    new THREE.Float32BufferAttribute([0,0,0, ax[0]*sc, ax[1]*sc, ax[2]*sc], 3));
+  axisLine = new THREE.LineSegments(geo,
+    new THREE.LineBasicMaterial({ color: 0xffffff }));
+  axisLine.visible = false;
+  scene.add(axisLine);
+  scene.axisHelper = axisLine;
+}
+
+function buildBeamLine() {
+  if (beamLine) scene.remove(beamLine);
+  beamLine = null;
+  const exp = rawData.experiments[0];
+  if (!exp?.beam_vector) return;
+  const sc = getSceneScale(), bv = exp.beam_vector;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position',
+    new THREE.Float32BufferAttribute([0,0,0, bv[0]*sc, bv[1]*sc, bv[2]*sc], 3));
+  beamLine = new THREE.LineSegments(geo,
+    new THREE.LineBasicMaterial({ color: 0xffff00 }));
+  beamLine.visible = false;
+  scene.add(beamLine);
+  scene.beamHelper = beamLine;
+}
+
+// ============================================================
+// Lab-frame X Y Z axes and reciprocal kx ky kz axes
+// ============================================================
+function makeAxisGroup(labels, colors, scale) {
+  // Returns a THREE.Group containing three arrows + text sprites.
+  // labels: ['X','Y','Z'] or ['kx','ky','kz']
+  // colors: hex colours for each axis
+  // scale:  length of each arrow
+  const group = new THREE.Group();
+  const dirs = [
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, 0, 1),
+  ];
+  const O = new THREE.Vector3(0, 0, 0);
+  dirs.forEach((dir, i) => {
+    const color = colors[i];
+    const arrow = new THREE.ArrowHelper(dir, O, scale, color,
+      scale * 0.15, scale * 0.08);
+    group.add(arrow);
+
+    // Text label sprite at arrow tip
+    const canvas = document.createElement('canvas');
+    canvas.width = 96; canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 32px monospace';
+    ctx.fillStyle = '#' + colors[i].toString(16).padStart(6, '0');
+    ctx.fillText(labels[i], 6, 36);
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: tex, transparent: true,
+                                  depthTest: false, sizeAttenuation: true }));
+    sprite.position.copy(dir).multiplyScalar(scale * 1.2);
+    sprite.scale.set(scale * 0.4, scale * 0.2, 1);
+    group.add(sprite);
+  });
+  return group;
+}
+
+function buildXYZAxes() {
+  if (xyzAxesGroup) { scene.remove(xyzAxesGroup); xyzAxesGroup = null; }
+  const sc = getSceneScale() * 0.5;
+  xyzAxesGroup = makeAxisGroup(
+    ['kx', 'ky', 'kz'],
+    [0xe74c3c, 0x2ecc71, 0x3498db],
+    sc
+  );
+  xyzAxesGroup.visible = document.getElementById('tog-xyz').classList.contains('on');
+  scene.add(xyzAxesGroup);
+}
+
+
+// ============================================================
+// Ewald sphere
+//
+// Reciprocal lattice points are FIXED. As the crystal rotates by phi
+// around the rotation axis, the beam direction s0 rotates by the same
+// angle.  The Ewald sphere centre in reciprocal space is:
+//
+//   C(phi) = +R_phi( s0_unit ) * ewald_radius
+//
+// We represent this with a THREE.Group whose .position = C(phi) and
+// whose .quaternion = R_phi so the partial-sphere cap rotates with the
+// beam.  Only a spherical cap facing the data is drawn.
+// ============================================================
+function buildEwaldObjects() {
+  if (ewaldGroup) { scene.remove(ewaldGroup); ewaldGroup = null; }
+
+  const exp = rawData.experiments[0];
+  if (!exp?.ewald_radius || !exp?.s0_scaled) return;
+
+  ewaldRadius = exp.ewald_radius;
+  s0unit.set(...exp.s0_scaled).normalize();
+  if (exp.rotation_axis) rotAxis.set(...exp.rotation_axis).normalize();
+
+  const R = ewaldRadius;
+
+  // The cap angle must be computed from the ACTUAL sphere centre positions
+  // the sphere visits during the scan — not from C at phi=0, which may be
+  // far from the scan range (e.g. x-ray scan at phi=27°–32° with phi=0
+  // never visited). We sample C at several phi values across the scan range
+  // and take the maximum angle seen from any of those centres to any RLP.
+  const scan = rawData.experiments[0].scan;
+  let phiSamples = [0];  // fallback: phi=0
+  if (scan) {
+    const { oscillation_start, oscillation_delta, image_range, num_images } = scan;
+    phiSamples = [];
+    for (let k = 0; k <= 4; k++) {
+      const img = image_range[0] + k * (num_images - 1) / 4;
+      const phi = oscillation_start + (img - image_range[0] + 0.5) * oscillation_delta;
+      phiSamples.push(phi);
+    }
+  }
+
+  let maxAngle = 0;
+  for (const phiDeg of phiSamples) {
+    const phiRad = -phiDeg * Math.PI / 180;
+    const q    = new THREE.Quaternion().setFromAxisAngle(rotAxis, phiRad);
+    const s0r  = s0unit.clone().applyQuaternion(q);
+    const C    = s0r.clone().multiplyScalar(-R);
+    const pole = s0r.clone();   // direction from C toward origin
+    for (const pt of rawData.points) {
+      const v  = new THREE.Vector3(...pt).sub(C);
+      const vl = v.length();
+      if (vl < 1e-6) continue;
+      const ang = Math.acos(Math.max(-1, Math.min(1, pole.dot(v) / vl)));
+      if (ang > maxAngle) maxAngle = ang;
+    }
+  }
+  const capAngle = Math.min(Math.PI * 100/180,
+                   Math.max(Math.PI * 50/180, maxAngle * 1.4));
+
+  // The cap is built in local group space with pole = s0unit (at phi=0 in local frame).
+  // The group's quaternion carries the rotation, so this is always correct.
+  const pole = s0unit.clone();
+
+  ewaldGroup = new THREE.Group();
+
+  // baseQ maps local +Z to pole = -s0unit (cap faces back toward data)
+  const baseQ = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1), pole);
+
+  const capMat = new THREE.LineBasicMaterial({
+    color: 0x4488ff, transparent: true, opacity: 0.5 });
+
+  function capPt(theta, phi) {
+    return new THREE.Vector3(
+      R * Math.sin(theta) * Math.cos(phi),
+      R * Math.sin(theta) * Math.sin(phi),
+      R * Math.cos(theta)
+    ).applyQuaternion(baseQ);
+  }
+
+  const nLat = 20, nMer = 28, nSeg = 96;
+
+  for (let li = 1; li < nLat; li++) {
+    const theta = (li / nLat) * capAngle;
+    const v = [];
+    for (let s = 0; s <= nSeg; s++) {
+      const p = capPt(theta, (s / nSeg) * Math.PI * 2);
+      v.push(p.x, p.y, p.z);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    ewaldGroup.add(new THREE.Line(geo, capMat));
+  }
+
+  for (let mi = 0; mi < nMer; mi++) {
+    const phi = (mi / nMer) * Math.PI * 2;
+    const v = [];
+    for (let s = 0; s <= nSeg; s++) {
+      const p = capPt((s / nSeg) * capAngle, phi);
+      v.push(p.x, p.y, p.z);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    ewaldGroup.add(new THREE.Line(geo, capMat));
+  }
+
+  scene.add(ewaldGroup);
+
+  updateEwaldVisibility();
+}
+
+function buildDetector() {
+  if (detectorGroup) { scene.remove(detectorGroup); detectorGroup = null; }
+  if (!rawData.experiments[0]?.ewald_radius) return;
+
+  const R = ewaldRadius;
+
+  // Detector is the tangent plane to the Ewald sphere at the world origin.
+  // Normal = s0unit. We keep detectorGroup independent of ewaldGroup so
+  // its visibility is controlled separately.
+  // The group carries a -phi quaternion applied in positionDetectorAtPhi.
+  // In group-local space at phi=0 the rectangle is centred at world origin,
+  // lying in the plane perpendicular to s0unit.
+
+  const norm = s0unit.clone();
+  const tmp  = Math.abs(norm.x) < 0.9
+    ? new THREE.Vector3(1, 0, 0)
+    : new THREE.Vector3(0, 1, 0);
+  const pu = tmp.clone().sub(norm.clone().multiplyScalar(tmp.dot(norm))).normalize();
+  const pv = norm.clone().cross(pu).normalize();
+
+  const bbox  = new THREE.Box3().setFromObject(pointsObject);
+  const bsize = bbox.getSize(new THREE.Vector3());
+  const half  = Math.max(bsize.x, bsize.y, bsize.z) * 0.5;
+
+  detectorGroup = new THREE.Group();
+  const matEdge = new THREE.LineBasicMaterial({ color: 0x00bfff });
+  const matGrid = new THREE.LineBasicMaterial({ color: 0x00bfff,
+                    transparent: true, opacity: 0.25 });
+
+  const nDiv = 10;  // grid divisions per side
+  // Helper: add a line segment from point a to point b
+  function addLine(a, b, mat) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position',
+      new THREE.Float32BufferAttribute([a.x,a.y,a.z, b.x,b.y,b.z], 3));
+    detectorGroup.add(new THREE.Line(geo, mat));
+  }
+
+  // Outline
+  const c00 = new THREE.Vector3().addScaledVector(pu, -half).addScaledVector(pv, -half);
+  const c10 = new THREE.Vector3().addScaledVector(pu,  half).addScaledVector(pv, -half);
+  const c11 = new THREE.Vector3().addScaledVector(pu,  half).addScaledVector(pv,  half);
+  const c01 = new THREE.Vector3().addScaledVector(pu, -half).addScaledVector(pv,  half);
+  addLine(c00, c10, matEdge);
+  addLine(c10, c11, matEdge);
+  addLine(c11, c01, matEdge);
+  addLine(c01, c00, matEdge);
+
+  // Grid lines parallel to pu (varying along pv)
+  for (let i = 1; i < nDiv; i++) {
+    const t = -half + (i / nDiv) * 2 * half;
+    const a = new THREE.Vector3().addScaledVector(pu, -half).addScaledVector(pv, t);
+    const b = new THREE.Vector3().addScaledVector(pu,  half).addScaledVector(pv, t);
+    addLine(a, b, matGrid);
+  }
+  // Grid lines parallel to pv (varying along pu)
+  for (let i = 1; i < nDiv; i++) {
+    const t = -half + (i / nDiv) * 2 * half;
+    const a = new THREE.Vector3().addScaledVector(pu, t).addScaledVector(pv, -half);
+    const b = new THREE.Vector3().addScaledVector(pu, t).addScaledVector(pv,  half);
+    addLine(a, b, matGrid);
+  }
+
+  detectorGroup.visible =
+    document.getElementById('tog-detector').classList.contains('on');
+  scene.add(detectorGroup);
+}
+
+function positionDetectorAtPhi(phiDeg) {
+  if (!detectorGroup) return;
+  const phiRad = -phiDeg * Math.PI / 180;
+  const q = new THREE.Quaternion().setFromAxisAngle(rotAxis, phiRad);
+  detectorGroup.quaternion.copy(q);
+}
+
+function buildCellOrientAxes() {
+  if (cellOrientGroup) { scene.remove(cellOrientGroup); cellOrientGroup = null; }
+  const exp = rawData.experiments[0];
+  if (!exp || !exp.direct_cell_frames || !exp.direct_cell_frames.length) return;
+
+  cellOrientGroup = new THREE.Group();
+  const O = new THREE.Vector3(0, 0, 0);
+  // Use frame 0 as reference; updateCellOrientAxes swaps vectors per image
+  const vecs = exp.direct_cell_frames[0];
+  const defs = [
+    { vec: vecs[0], color: 0xe74c3c, label: 'a' },
+    { vec: vecs[1], color: 0x2ecc71, label: 'b' },
+    { vec: vecs[2], color: 0x3498db, label: 'c' },
+  ];
+  defs.forEach(({ vec, color, label }) => {
+    // vec = [x, y, z, length_angstrom] — 4th element is real length in Å
+    const lenAng = vec.length === 4 ? vec[3] : null;
+    const v3  = new THREE.Vector3(vec[0], vec[1], vec[2]);
+    const len = v3.length();
+    const dir = v3.clone().normalize();
+    const arrow = new THREE.ArrowHelper(dir, O, len, color,
+      len * 0.15, len * 0.08);
+    cellOrientGroup.add(arrow);
+    const canvas = document.createElement('canvas');
+    canvas.width = 48; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.fillText(label, 4, 22);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(canvas),
+      transparent: true, depthTest: false, sizeAttenuation: true
+    }));
+    sprite.position.copy(dir).multiplyScalar(len * 1.2);
+    sprite.scale.set(len * 0.2, len * 0.12, 1);
+    cellOrientGroup.add(sprite);
+  });
+
+  cellOrientGroup.visible =
+    document.getElementById('tog-cell-orient').classList.contains('on');
+  scene.add(cellOrientGroup);
+}
+
+// Alias so buildCellOrientAxes just builds from frame 0
+// (slider will call updateCellOrientAxes to switch frames)
+
+function updateCellOrientAxes(imgNum) {
+  if (!cellOrientGroup || !rawData) return;
+  const exp = rawData.experiments[0];
+  if (!exp?.direct_cell_frames) return;
+
+  const scan  = exp.scan;
+  const idx   = scan ? imgNum - scan.image_range[0] : 0;
+  const frame = exp.direct_cell_frames[Math.max(0,
+                  Math.min(idx, exp.direct_cell_frames.length - 1))];
+
+  // Update each arrow in the group: arrows are children 0,2,4 (ArrowHelper),
+  // sprites are 1,3,5. Rebuild the whole group for simplicity.
+  scene.remove(cellOrientGroup);
+  cellOrientGroup = null;
+  buildCellOrientAxesFromFrame(frame);
+}
+
+function buildCellOrientAxesFromFrame(vecs) {
+  if (cellOrientGroup) { scene.remove(cellOrientGroup); cellOrientGroup = null; }
+  cellOrientGroup = new THREE.Group();
+  const O    = new THREE.Vector3(0, 0, 0);
+  const defs = [
+    { vec: vecs[0], color: 0xe74c3c, label: 'a' },
+    { vec: vecs[1], color: 0x2ecc71, label: 'b' },
+    { vec: vecs[2], color: 0x3498db, label: 'c' },
+  ];
+  // Store axis info for tooltip (in group-local space; group has no translation)
+  cellOrientGroup.userData.axes = [];
+  defs.forEach(({ vec, color, label }) => {
+    // vec = [x, y, z, length_angstrom] — 4th element is real length in Å
+    const lenAng = vec.length === 4 ? vec[3] : null;
+    const v3  = new THREE.Vector3(vec[0], vec[1], vec[2]);
+    const len = v3.length();
+    const dir = v3.clone().normalize();
+    const arrow = new THREE.ArrowHelper(dir, O, len, color,
+      len * 0.15, len * 0.08);
+    cellOrientGroup.add(arrow);
+    const canvas = document.createElement('canvas');
+    canvas.width = 48; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.fillText(label, 4, 22);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(canvas),
+      transparent: true, depthTest: false, sizeAttenuation: true
+    }));
+    sprite.position.copy(dir).multiplyScalar(len * 1.2);
+    sprite.scale.set(len * 0.2, len * 0.12, 1);
+    cellOrientGroup.add(sprite);
+    // tip position in group-local space
+    cellOrientGroup.userData.axes.push({
+      label,
+      tip: dir.clone().multiplyScalar(len),
+      dir: dir.clone(),
+      lenAng,  // real length in Ångströms from Python
+    });
+  });
+  cellOrientGroup.visible =
+    document.getElementById('tog-cell-orient').classList.contains('on');
+  scene.add(cellOrientGroup);
+}
+
+function positionEwaldAtPhi(phiDeg) {
+  if (!ewaldGroup) return;
+  // RLPs are fixed; crystal rotates +phi. In RLP frame s0 rotates -phi.
+  // C(phi) = -R_{-phi}(s0_unit) * R
+  const phiRad = -phiDeg * Math.PI / 180;
+  const q      = new THREE.Quaternion().setFromAxisAngle(rotAxis, phiRad);
+  const s0rot  = s0unit.clone().applyQuaternion(q);
+  ewaldGroup.position.copy(s0rot).multiplyScalar(-ewaldRadius);
+  ewaldGroup.quaternion.copy(q);
+}
+
+function phiForImage(imgNum) {
+  if (!scanInfo) return 0;
+  const { oscillation_start, oscillation_delta, image_range } = scanInfo;
+  return oscillation_start + (imgNum - image_range[0] + 0.5) * oscillation_delta;
+}
+
+function onImageSlider(imgNum) {
+  currentImage = imgNum;
+  document.getElementById('img-label').textContent = '#' + imgNum;
+  if (scanInfo) {
+    const phi = phiForImage(imgNum);
+    document.getElementById('phi-label').textContent =
+      'φ = ' + phi.toFixed(2) + '°  Δ=' + scanInfo.oscillation_delta.toFixed(3) + '°';
+    positionEwaldAtPhi(phi);
+    positionDetectorAtPhi(phi);
+    updateCellOrientAxes(imgNum);
+  }
+  updateHighlights(imgNum);
+}
+window.onImageSlider = onImageSlider;
+
+// z from xyzobs.px.value[2] is the 0-based fractional frame number.
+// image_range is 1-based (e.g. [1, 900]) so:
+//   frame(imgNum) = imgNum - image_range[0]
+//
+// The highlight window is ± half the oscillation delta, so for fine-sliced
+// data (delta=0.1°) only spots truly on that image light up.  Fall back to
+// ±0.5 when no scan info is available.
+function updateHighlights(imgNum) {
+  if (!pointsObject || !rawData) return;
+
+  const hlEnabled  = ewaldMasterOn && document.getElementById('chk-highlight').checked;
+  const hklEnabled = ewaldMasterOn && document.getElementById('chk-hl-hkl').checked;
+  const hlAttr     = pointsObject.geometry.attributes.highlight;
+  const d          = rawData.data;
+  // z is 0-based frame float; image N covers [N-image_range[0], N-image_range[0]+1)
+  const frame      = imgNum - (scanInfo ? scanInfo.image_range[0] : 1);
+
+  // -- update per-vertex highlight attribute --
+  for (let i = 0, n = d.z.length; i < n; i++) {
+    const onThisImage = hlEnabled
+      && pointsObject.geometry.attributes.alpha.getX(i) > 0.5
+      && d.z[i] >= frame && d.z[i] < frame + 1;
+    hlAttr.setX(i, onThisImage ? 1 : 0);
+  }
+  hlAttr.needsUpdate = true;
+
+  // -- rebuild hkl label sprites for highlighted indexed spots --
+  annHLSprites.forEach(s => scene.remove(s)); annHLSprites = [];
+  if (!hklEnabled || !d.h) return;
+
+  const fontSize = parseInt(document.getElementById('ann-size').value) || 18;
+  const lineH    = fontSize + 6;
+  const cw = 200, ch = lineH + 8;
+
+  for (let i = 0, n = d.z.length; i < n; i++) {
+    if (!d.indexed_status[i]) continue;
+    if (pointsObject.geometry.attributes.alpha.getX(i) < 0.5) continue;
+    if (!hlEnabled || !(d.z[i] >= frame && d.z[i] < frame + 1)) continue;
+
+    const label = '(' + (-d.h[i]) + ',' + (-d.k[i]) + ',' + (-d.l[i]) + ')';
+    const pt  = rawData.points[i];
+    const off = fontSize * 7;
+    const sprite = makeLabelSprite(label, '#00ffcc', fontSize);
+    sprite.position.set(pt[0], pt[1] + off, pt[2]);
+    scene.add(sprite);
+    annHLSprites.push(sprite);
+  }
+}
+
+function updateEwaldVisibility() {
+  const sphereOn  = ewaldMasterOn && document.getElementById('chk-ewald-sphere').checked;
+  const orientOn   = document.getElementById('tog-cell-orient').classList.contains('on');
+  const detectorOn = document.getElementById('tog-detector').classList.contains('on');
+  if (ewaldGroup)       ewaldGroup.visible       = sphereOn;
+  if (cellOrientGroup)  cellOrientGroup.visible  = orientOn;
+  if (detectorGroup)    detectorGroup.visible    = detectorOn;
+  updateHighlights(currentImage);
+}
+window.setEwaldSphereVisible  = () => updateEwaldVisibility();
+window.setHighlightVisible    = () => updateEwaldVisibility();
+
+// ============================================================
+// Sidebar build
+// ============================================================
+function buildSidebar() {
+  const d = rawData;
+  document.getElementById('info-line').textContent =
+    d.experiments.length + ' expt · ' + d.points.length.toLocaleString() + ' spots';
+
+  const list = document.getElementById('exp-list');
+  list.innerHTML = '';
+  d.experiments.forEach((exp, i) => {
+    const col   = EXP_COLORS_HEX[(i+1) % EXP_COLORS_HEX.length];
+    const count = d.data.id.filter(x => x === i).length;
+    const row   = document.createElement('div');
+    row.className = 'exp-row';
+    row.innerHTML = `
+      <div class="exp-dot" style="background:${col}"></div>
+      <span class="exp-label">exp ${i}</span>
+      <span class="exp-count">${count.toLocaleString()}</span>
+      <div class="toggle on" data-expid="${i}"></div>`;
+    list.appendChild(row);
+  });
+  // experiment toggles
+  list.querySelectorAll('.toggle').forEach(el => {
+    el.addEventListener('click', () => {
+      el.classList.toggle('on');
+      applyFilters();
+    });
+  });
+
+  // d-spacing range
+  const dvals = d.data.d_spacing;
+  const dmin = Math.min(...dvals), dmax = Math.max(...dvals);
+  const fmin = document.getElementById('filt-dmin');
+  const fmax = document.getElementById('filt-dmax');
+  fmin.min = fmax.min = dmin.toFixed(2);
+  fmin.max = fmax.max = (dmax * 1.05).toFixed(2);
+  fmin.value = dmin.toFixed(2);
+  fmax.value = (dmax * 1.05).toFixed(2);
+  fmin.step  = fmax.step = 0.05;
+  fmin.nextElementSibling.textContent = dmin.toFixed(1);
+  fmax.nextElementSibling.textContent = dmax.toFixed(1);
+
+  // I/sigma range
+  if (d.data.sigma && d.data.intensity) {
+    const ios = d.data.intensity.map((v, i) =>
+      d.data.sigma[i] > 0 ? v / d.data.sigma[i] : 0);
+    document.getElementById('filt-ios').max =
+      Math.min(50, Math.max(...ios)).toFixed(1);
+  }
+
+  document.getElementById('pt-size').value = d.settings.marker_size || 6;
+}
+
+function setupEwaldPanel() {
+  const exp = rawData.experiments[0];
+  if (!exp?.scan) return;
+  scanInfo = exp.scan;
+  const panel  = document.getElementById('ewald-panel');
+  const slider = document.getElementById('img-slider');
+  panel.classList.remove('hidden');
+  slider.min   = scanInfo.image_range[0];
+  slider.max   = scanInfo.image_range[1];
+  slider.value = scanInfo.image_range[0];
+  currentImage  = scanInfo.image_range[0];
+  onImageSlider(currentImage);
+}
+
+// ============================================================
+// Bind all UI controls
+// ============================================================
+function bindUI() {
+  // Point size
+  const ptSlider = document.getElementById('pt-size');
+  ptSlider.addEventListener('input', e => {
+    const v = +e.target.value;
+    pointsObject.material.uniforms.pointSize.value = v;
+    if (selSquares) selSquares.material.uniforms.pointSize.value = v;
+    e.target.nextElementSibling.textContent = e.target.value;
+  });
+
+  // Opacity
+  const opSlider = document.getElementById('opacity');
+  opSlider.addEventListener('input', e => {
+    pointsObject.material.uniforms.globalOpacity.value = +e.target.value / 100;
+    e.target.nextElementSibling.textContent = e.target.value + '%';
+  });
+
+  // Colour by
+  document.getElementById('color-by').addEventListener('change', e =>
+    recolour(e.target.value));
+
+  // Group toggles
+  document.getElementById('tog-indexed').addEventListener('click', e =>
+    toggleGroup(e.currentTarget, 'indexed'));
+  document.getElementById('tog-unindexed').addEventListener('click', e =>
+    toggleGroup(e.currentTarget, 'unindexed'));
+  document.getElementById('tog-integrated').addEventListener('click', e =>
+    toggleGroup(e.currentTarget, 'integrated'));
+
+  // Overlay toggles
+  document.getElementById('tog-cell').addEventListener('click', e =>
+    toggleOverlay(e.currentTarget, 'cell'));
+  document.getElementById('tog-axis').addEventListener('click', e =>
+    toggleOverlay(e.currentTarget, 'axis'));
+  document.getElementById('tog-beam').addEventListener('click', e =>
+    toggleOverlay(e.currentTarget, 'beam'));
+  document.getElementById('tog-xyz').addEventListener('click', e =>
+    toggleOverlay(e.currentTarget, 'xyz'));
+
+  // Annotation toggles
+  document.getElementById('tog-ann-hkl').addEventListener('click', e =>
+    toggleAnnotation(e.currentTarget, 'hkl'));
+  document.getElementById('tog-ann-res').addEventListener('click', e =>
+    toggleAnnotation(e.currentTarget, 'res'));
+
+  // Annotation size slider
+  const annSlider = document.getElementById('ann-size');
+  annSlider.addEventListener('input', e => {
+    annSlider.nextElementSibling.textContent = e.target.value + 'px';
+    rebuildAnnotations();
+    rebuildSelLabels();
+    updateHighlights(currentImage);   // refresh HL labels with new font size
+  });
+
+  // Fixed screen size toggle
+
+  // Filters
+  document.getElementById('filt-dmin').addEventListener('input', e => {
+    e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+    applyFilters();
+  });
+  document.getElementById('filt-dmax').addEventListener('input', e => {
+    e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+    applyFilters();
+  });
+  document.getElementById('filt-ios').addEventListener('input', e => {
+    e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+    applyFilters();
+  });
+
+  // Tooltip chips
+  document.querySelectorAll('#tooltip-chips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('on');
+      const f = chip.dataset.field;
+      if (chip.classList.contains('on')) tooltipFields.add(f);
+      else tooltipFields.delete(f);
+    });
+  });
+
+  // Toolbar
+  document.getElementById('btn-rotate').addEventListener('click', e => {
+    document.querySelectorAll('#toolbar .tbtn').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    // TrackballControls: just reset to default (left=rotate)
+    controls.noRotate = false; controls.noPan = true;
+  });
+  document.getElementById('btn-pan').addEventListener('click', e => {
+    document.querySelectorAll('#toolbar .tbtn').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    controls.noRotate = true; controls.noPan = false;
+  });
+  document.getElementById('btn-ab').addEventListener('click', () => viewPreset('ab'));
+  document.getElementById('btn-ac').addEventListener('click', () => viewPreset('ac'));
+  document.getElementById('btn-bc').addEventListener('click', () => viewPreset('bc'));
+  document.getElementById('btn-along-a').addEventListener('click', () => viewAlongAxis('a'));
+  document.getElementById('btn-along-b').addEventListener('click', () => viewAlongAxis('b'));
+  document.getElementById('btn-along-c').addEventListener('click', () => viewAlongAxis('c'));
+  document.getElementById('btn-rot-axis').addEventListener('click', viewNormalToRotAxis);
+  document.getElementById('btn-along-da').addEventListener('click', () => viewAlongDirectAxis('a'));
+  document.getElementById('btn-along-db').addEventListener('click', () => viewAlongDirectAxis('b'));
+  document.getElementById('btn-along-dc').addEventListener('click', () => viewAlongDirectAxis('c'));
+  document.getElementById('btn-select').addEventListener('click', e =>
+    toggleSelectMode(e.currentTarget));
+  document.getElementById('btn-clear-sel').addEventListener('click', clearSelection);
+  document.getElementById('btn-ortho').addEventListener('click', e => switchProjection(e.currentTarget));
+  document.getElementById('btn-reset').addEventListener('click', resetCamera);
+  document.getElementById('btn-screenshot').addEventListener('click', takeScreenshot);
+
+  // Ewald panel
+  document.getElementById('tog-ewald-master').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    ewaldMasterOn = e.currentTarget.classList.contains('on');
+    updateEwaldVisibility();
+  });
+  document.getElementById('chk-ewald-sphere').addEventListener('change',
+    () => updateEwaldVisibility());
+  document.getElementById('chk-highlight').addEventListener('change',
+    () => updateEwaldVisibility());
+  document.getElementById('tog-cell-orient').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    if (cellOrientGroup) cellOrientGroup.visible = e.currentTarget.classList.contains('on');
+  });
+  document.getElementById('tog-detector').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    if (detectorGroup) detectorGroup.visible = e.currentTarget.classList.contains('on');
+  });
+  document.getElementById('chk-hl-hkl').addEventListener('change',
+    () => updateHighlights(currentImage));
+
+  document.getElementById('img-slider').addEventListener('input', e =>
+    onImageSlider(+e.target.value));
+}
+
+// ============================================================
+// Overlay / group / annotation toggles
+// ============================================================
+function toggleOverlay(el, name) {
+  el.classList.toggle('on');
+  const on = el.classList.contains('on');
+  if (name === 'cell')  cellLines.forEach(l => l.visible = on);
+  if (name === 'axis'  && axisLine)    axisLine.visible    = on;
+  if (name === 'beam'  && beamLine)    beamLine.visible    = on;
+  if (name === 'xyz'   && xyzAxesGroup)  xyzAxesGroup.visible  = on;
+}
+
+// Group toggle — uses rawData.groups[] for fast O(n) update
+function toggleGroup(el, group) {
+  el.classList.toggle('on');
+  groupVisible[group] = el.classList.contains('on');
+  applyFilters();
+}
+
+function toggleAnnotation(el, type) {
+  el.classList.toggle('on');
+  if (el.classList.contains('on')) activeAnnotations.add(type);
+  else activeAnnotations.delete(type);
+  rebuildAnnotations();
+}
+
+// ============================================================
+// Colour by
+// ============================================================
+function recolour(mode) {
+  if (!pointsObject || !rawData) return;
+  const d = rawData, n = d.points.length;
+  const ca = pointsObject.geometry.attributes.color;
+  if (mode === 'experiment') {
+    for (let i = 0; i < n; i++)
+      ca.setXYZ(i, d.colors[i][0], d.colors[i][1], d.colors[i][2]);
+  } else if (mode === 'resolution') {
+    const vals = d.data.d_spacing;
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    for (let i = 0; i < n; i++) {
+      const c = new THREE.Color().setHSL(0.66*(1-(vals[i]-lo)/(hi-lo+1e-9)), 1, 0.55);
+      ca.setXYZ(i, c.r, c.g, c.b);
+    }
+  } else if (mode === 'intensity' && d.data.intensity) {
+    const vals  = d.data.intensity.filter(v => v !== null);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    for (let i = 0; i < n; i++) {
+      const v = d.data.intensity[i] ?? lo;
+      const c = new THREE.Color().setHSL(0.66*(1-Math.max(0,Math.min(1,(v-lo)/(hi-lo+1e-9)))),1,0.55);
+      ca.setXYZ(i, c.r, c.g, c.b);
+    }
+  } else if (mode === 'ioversigma' && d.data.intensity && d.data.sigma) {
+    const ios = d.data.intensity.map((v, i) =>
+      d.data.sigma[i] > 0 ? v / d.data.sigma[i] : 0);
+    const hi = Math.min(50, Math.max(...ios));
+    for (let i = 0; i < n; i++) {
+      const c = new THREE.Color().setHSL(0.66*(1-Math.max(0,Math.min(1,ios[i]/(hi+1e-9)))),1,0.55);
+      ca.setXYZ(i, c.r, c.g, c.b);
+    }
+  }
+  ca.needsUpdate = true;
+}
+
+// ============================================================
+// Filters — uses rawData.groups[] (pre-computed, no flag arithmetic)
+// ============================================================
+function applyFilters() {
+  if (!pointsObject || !rawData) return;
+  const d   = rawData, n = d.points.length;
+  const aa  = pointsObject.geometry.attributes.alpha;
+  const dmin   = parseFloat(document.getElementById('filt-dmin').value);
+  const dmax   = parseFloat(document.getElementById('filt-dmax').value);
+  const iosMin = parseFloat(document.getElementById('filt-ios').value);
+
+  // Which experiment ids are enabled?
+  const expToggles = document.querySelectorAll('#exp-list .toggle');
+  const expOn = new Set();
+  d.experiments.forEach((_, i) => {
+    if (!expToggles[i] || expToggles[i].classList.contains('on')) expOn.add(i);
+  });
+
+  let vis = 0;
+  for (let i = 0; i < n; i++) {
+    const ds    = d.data.d_spacing[i];
+    const expId = d.data.id[i];
+    const group = d.groups[i];   // 'integrated' | 'indexed' | 'unindexed'
+    let ios = 0;
+    if (d.data.intensity && d.data.sigma && d.data.sigma[i] > 0)
+      ios = d.data.intensity[i] / d.data.sigma[i];
+
+    // expId == -1 means unindexed (no experiment assigned); show if any exp is on
+    const expOk = expId === -1 ? expOn.size > 0 : expOn.has(expId);
+    const show = expOk
+              && ds >= dmin && ds <= dmax
+              && ios >= iosMin
+              && groupVisible[group];
+
+    aa.setX(i, show ? 1 : 0);
+    if (show) vis++;
+  }
+  aa.needsUpdate = true;
+  document.getElementById('status-count').textContent =
+    vis.toLocaleString() + ' / ' + n.toLocaleString() + ' spots';
+
+  if (activeAnnotations.size > 0) rebuildAnnotations();
+  updateHighlights(currentImage);
+}
+
+// ============================================================
+// Annotations — canvas sprites, rebuilt on filter/size change
+// ============================================================
+
+// Build a single label sprite.
+function makeLabelSprite(text, color, fontSize) {
+  const lineH = fontSize + 6;
+  const lines = Array.isArray(text) ? text : [text];
+  const cw = 256, ch = lines.length * lineH + 8;
+  const canvas = document.createElement('canvas');
+  canvas.width = cw; canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  ctx.font = fontSize + 'px monospace';
+  ctx.fillStyle = color;
+  lines.forEach((ln, li) => ctx.fillText(ln, 2, (li + 1) * lineH - 4));
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthTest: false, opacity: 0.95,
+    sizeAttenuation: true,
+  });
+  const sprite = new THREE.Sprite(mat);
+  const worldPx = fontSize * 12;
+  sprite.scale.set(worldPx * (cw / ch), worldPx, 1);
+  return sprite;
+}
+
+function rebuildAnnotations() {
+  annSprites.forEach(s => scene.remove(s)); annSprites = [];
+  if (activeAnnotations.size === 0 || !rawData) return;
+
+  const d        = rawData;
+  const fontSize = parseInt(document.getElementById('ann-size').value) || 18;
+  let count = 0;
+
+  for (let i = 0, n = d.points.length; i < n && count < 2000; i++) {
+    if (pointsObject.geometry.attributes.alpha.getX(i) < 0.5) continue;
+    let line1 = '', line2 = '';
+    if (activeAnnotations.has('hkl') && d.data.h !== undefined && d.data.indexed_status[i])
+      line1 = '(' + (-d.data.h[i]) + ',' + (-d.data.k[i]) + ',' + (-d.data.l[i]) + ')';
+    if (activeAnnotations.has('res'))
+      line2 = d.data.d_spacing[i].toFixed(2) + ' Å';
+    if (!line1 && !line2) continue;
+    const pt = d.points[i];
+    const off = fontSize * 7;
+    const sprite = makeLabelSprite([line1, line2].filter(Boolean),
+                                   '#ffffff', fontSize);
+    sprite.position.set(pt[0], pt[1] + off, pt[2]);
+    scene.add(sprite); annSprites.push(sprite);
+    count++;
+  }
+}
+
+// ============================================================
+// Selection system — red squares + light-red hkl labels
+// ============================================================
+function buildSelSquares() {
+  if (selSquares) { scene.remove(selSquares); selSquares = null; }
+  const n   = rawData.points.length;
+  const pos = new Float32Array(n * 3);
+  const sel = new Float32Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    pos[i*3]   = rawData.points[i][0];
+    pos[i*3+1] = rawData.points[i][1];
+    pos[i*3+2] = rawData.points[i][2];
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('sel',      new THREE.BufferAttribute(sel, 1));
+  // Square point shader — renders only selected spots (sel>0.5) as red squares
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { pointSize: { value: 0 } },  // set dynamically
+    vertexShader: [
+      'attribute float sel;',
+      'varying float vSel;',
+      'uniform float pointSize;',
+      'void main() {',
+      '  vSel = sel;',
+      '  gl_PointSize = sel > 0.5 ? pointSize * 2.2 : 0.0;',
+      '  gl_Position  = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      '}'
+    ].join('\n'),
+    fragmentShader: [
+      'varying float vSel;',
+      'void main() {',
+      '  if (vSel < 0.5) discard;',
+      '  vec2 uv = abs(gl_PointCoord - 0.5);',
+      '  // Draw a square ring: discard interior and outside ring',
+      '  float border = 0.1;',
+      '  if (uv.x < 0.5 - border && uv.y < 0.5 - border) discard;',
+      '  gl_FragColor = vec4(1.0, 0.25, 0.25, 1.0);',
+      '}'
+    ].join('\n')
+  });
+  selSquares = new THREE.Points(geo, mat);
+  selSquares.renderOrder = 1;
+  scene.add(selSquares);
+  // Keep point size in sync with main points
+  selSquares.material.uniforms.pointSize.value =
+    pointsObject.material.uniforms.pointSize.value;
+}
+
+function updateSelSquares() {
+  if (!selSquares) return;
+  const selAttr = selSquares.geometry.attributes.sel;
+  for (let i = 0, n = selAttr.count; i < n; i++)
+    selAttr.setX(i, selectedSet.has(i) ? 1 : 0);
+  selAttr.needsUpdate = true;
+  // Keep size in sync
+  selSquares.material.uniforms.pointSize.value =
+    pointsObject.material.uniforms.pointSize.value;
+}
+
+function rebuildSelLabels() {
+  annSelSprites.forEach(s => scene.remove(s)); annSelSprites = [];
+  if (selectedSet.size === 0 || !rawData) return;
+  const d        = rawData.data;
+  const fontSize = parseInt(document.getElementById('ann-size').value) || 18;
+  const lineH    = fontSize + 6;
+  const cw = 200, ch = lineH + 8;
+  for (const i of selectedSet) {
+    if (!d.indexed_status[i]) continue;
+    if (pointsObject.geometry.attributes.alpha.getX(i) < 0.5) continue;
+    const label = '(' + (-d.h[i]) + ',' + (-d.k[i]) + ',' + (-d.l[i]) + ')';
+    const pt  = rawData.points[i];
+    const off = fontSize * 7;
+    const sprite = makeLabelSprite(label, '#ff9999', fontSize);
+    sprite.position.set(pt[0], pt[1] + off, pt[2]);
+    scene.add(sprite); annSelSprites.push(sprite);
+  }
+}
+
+function toggleSelectMode(btn) {
+  selectMode = !selectMode;
+  btn.classList.toggle('active', selectMode);
+  // Rotation stays enabled always — clicks that miss a spot fall through
+  // to normal TrackballControls behaviour without any interference.
+  document.getElementById('canvas-wrap').style.cursor =
+    selectMode ? 'crosshair' : 'default';
+}
+
+function clearSelection() {
+  selectedSet.clear();
+  updateSelSquares();
+  rebuildSelLabels();
+  document.getElementById('status-count').textContent =
+    document.getElementById('status-count').textContent.replace(/ · \d+ selected/, '');
+}
+
+function handleSelectClick(evt) {
+  if (!selectMode || !pointsObject) return;
+  const rect  = renderer.domElement.getBoundingClientRect();
+  const clickX = evt.clientX - rect.left;
+  const clickY = evt.clientY - rect.top;
+  const W = rect.width, H = rect.height;
+  const cam  = activeCamera();
+  const pos  = pointsObject.geometry.attributes.position;
+  const alph = pointsObject.geometry.attributes.alpha;
+  const THRESH_PX = 12;  // screen-space pixel radius for hit detection
+
+  let bestIdx  = -1;
+  let bestDist = Infinity;
+
+  // Project every visible point to screen and find closest to click
+  const tmp = new THREE.Vector3();
+  for (let i = 0, n = pos.count; i < n; i++) {
+    if (alph.getX(i) < 0.5) continue;
+    tmp.fromBufferAttribute(pos, i).project(cam);
+    const sx = ( tmp.x * 0.5 + 0.5) * W;
+    const sy = (-tmp.y * 0.5 + 0.5) * H;
+    const d  = Math.hypot(sx - clickX, sy - clickY);
+    if (d < THRESH_PX && d < bestDist) {
+      bestDist = d;
+      bestIdx  = i;
+    }
+  }
+
+  if (bestIdx < 0) return;
+  if (selectedSet.has(bestIdx)) selectedSet.delete(bestIdx);
+  else selectedSet.add(bestIdx);
+  updateSelSquares();
+  rebuildSelLabels();
+  const base = document.getElementById('status-count').textContent
+    .replace(/ · \d+ selected/, '');
+  document.getElementById('status-count').textContent =
+    selectedSet.size > 0 ? base + ' · ' + selectedSet.size + ' selected' : base;
+}
+
+// ============================================================
+// Camera presets / reset
+// ============================================================
+function viewPreset(plane) {
+  const bbox   = new THREE.Box3().setFromObject(pointsObject);
+  const center = new THREE.Vector3(); bbox.getCenter(center);
+  const size   = bbox.getSize(new THREE.Vector3()).length();
+  controls.target.copy(center);
+  // Always move the perspective camera — controls always drives it,
+  // and syncOrthoCam() mirrors it into orthoCam each frame.
+  if (plane === 'ab') { camera.position.set(center.x, center.y, center.z + size*1.2); camera.up.set(0, 1, 0); }
+  if (plane === 'ac') { camera.position.set(center.x, center.y - size*1.2, center.z); camera.up.set(0, 0, 1); }
+  if (plane === 'bc') { camera.position.set(center.x + size*1.2, center.y, center.z); camera.up.set(0, 1, 0); }
+  if (isOrtho) orthoZoom = 1.0;
+  controls.update();
+}
+
+function viewAlongAxis(axis) {
+  // Orient the camera to look along a reciprocal lattice axis.
+  // "Along a*" = camera is placed in the +a* direction, looking toward origin,
+  // so the a*b* and a*c* planes are face-on.
+  const exp = rawData.experiments[0];
+  if (!exp || !exp.recip_latt_vectors) return;
+
+  const [av, bv, cv] = exp.recip_latt_vectors.map(v => new THREE.Vector3(...v));
+  // Each axis vector is already in scene units (scaled by scale_factor).
+  // We need: camera direction, and an up vector perpendicular to it.
+  let dir, up;
+  if (axis === 'a') { dir = av.clone().normalize(); up = cv.clone(); }
+  if (axis === 'b') { dir = bv.clone().normalize(); up = av.clone(); }
+  if (axis === 'c') { dir = cv.clone().normalize(); up = av.clone(); }
+
+  // Make up perpendicular to dir
+  up.sub(dir.clone().multiplyScalar(up.dot(dir))).normalize();
+  // Fallback if up and dir are parallel
+  if (up.length() < 0.01) {
+    up = new THREE.Vector3(0, 1, 0);
+    up.sub(dir.clone().multiplyScalar(up.dot(dir))).normalize();
+  }
+
+  const bbox   = new THREE.Box3().setFromObject(pointsObject);
+  const center = new THREE.Vector3(); bbox.getCenter(center);
+  const size   = bbox.getSize(new THREE.Vector3()).length();
+
+  controls.target.copy(center);
+  camera.position.copy(center).addScaledVector(dir, size * 1.2);
+  camera.up.copy(up);
+  if (isOrtho) orthoZoom = 1.0;
+  controls.update();
+}
+
+function viewAlongDirectAxis(axis) {
+  // Orient camera along the direct-space cell vector a, b, or c
+  // for the current image, using direct_cell_frames data.
+  const exp = rawData.experiments[0];
+  if (!exp?.direct_cell_frames?.length) return;
+
+  const scan = exp.scan;
+  const idx  = scan ? Math.max(0, Math.min(
+    currentImage - scan.image_range[0],
+    exp.direct_cell_frames.length - 1)) : 0;
+  const frame = exp.direct_cell_frames[idx];
+  // frame[0] = a vec (x,y,z,lenAng), frame[1] = b, frame[2] = c
+  const axIdx = { a: 0, b: 1, c: 2 }[axis];
+  const vec   = frame[axIdx];
+  const dir   = new THREE.Vector3(vec[0], vec[1], vec[2]).normalize();
+
+  // Up vector: use another direct axis, Gram-Schmidt
+  const upVec = frame[axIdx === 0 ? 2 : 0];
+  let up = new THREE.Vector3(upVec[0], upVec[1], upVec[2]).normalize();
+  up.sub(dir.clone().multiplyScalar(up.dot(dir))).normalize();
+  if (up.length() < 0.01) {
+    up = new THREE.Vector3(0, 1, 0);
+    up.sub(dir.clone().multiplyScalar(up.dot(dir))).normalize();
+  }
+
+  const bbox   = new THREE.Box3().setFromObject(pointsObject);
+  const center = new THREE.Vector3(); bbox.getCenter(center);
+  const size   = bbox.getSize(new THREE.Vector3()).length();
+
+  controls.target.copy(center);
+  camera.position.copy(center).addScaledVector(dir, size * 1.2);
+  camera.up.copy(up);
+  if (isOrtho) orthoZoom = 1.0;
+  controls.update();
+}
+
+function viewNormalToRotAxis() {
+  // Place camera ALONG the rotation axis so the axis points into/out of
+  // the screen and appears as a dot in the view.
+  const exp = rawData.experiments[0];
+  if (!exp || !exp.rotation_axis) return;
+
+  const rotAx = new THREE.Vector3(...exp.rotation_axis).normalize();
+
+  // Choose an up vector perpendicular to rotAx.
+  // Use the beam direction projected perpendicular to rotAx, or world Z.
+  let up = exp.s0_scaled
+    ? new THREE.Vector3(...exp.s0_scaled).normalize()
+    : new THREE.Vector3(0, 0, 1);
+  up.sub(rotAx.clone().multiplyScalar(up.dot(rotAx))).normalize();
+  if (up.length() < 0.01) {
+    up = new THREE.Vector3(0, 1, 0);
+    up.sub(rotAx.clone().multiplyScalar(up.dot(rotAx))).normalize();
+  }
+
+  const bbox   = new THREE.Box3().setFromObject(pointsObject);
+  const center = new THREE.Vector3(); bbox.getCenter(center);
+  const size   = bbox.getSize(new THREE.Vector3()).length();
+
+  controls.target.copy(center);
+  camera.position.copy(center).addScaledVector(rotAx, size * 1.2);
+  camera.up.copy(up);
+  if (isOrtho) orthoZoom = 1.0;
+  controls.update();
+}
+
+function resetCamera() { fitCamera(); }
+function takeScreenshot() {
+  renderer.render(scene, activeCamera());
+  const a = document.createElement('a');
+  a.href = renderer.domElement.toDataURL('image/png');
+  a.download = 'dials_rlv.png'; a.click();
+}
+
+// ============================================================
+// Tooltip
+// ============================================================
+const _ray = new THREE.Raycaster();
+_ray.params.Points.threshold = 80;
+const _mouse = new THREE.Vector2();
+let _lastHover = -1;
+
+function onMouseMove(evt) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  _mouse.x =  ((evt.clientX - rect.left) / rect.width)  * 2 - 1;
+  _mouse.y = -((evt.clientY - rect.top)  / rect.height) * 2 + 1;
+}
+
+function checkCellOrientTooltip() {
+  // Project each axis tip to screen and check proximity to mouse cursor.
+  // Returns true if a cell-orient tooltip was shown.
+  if (!cellOrientGroup || !cellOrientGroup.visible) return false;
+  if (!cellOrientGroup.userData.axes) return false;
+
+  const wrap   = document.getElementById('canvas-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  // Mouse in pixel coords
+  const mx = (_mouse.x *  0.5 + 0.5) * W;
+  const my = (-_mouse.y * 0.5 + 0.5) * H;
+
+  const cam = activeCamera();
+  const exp = rawData.experiments[0];
+  // s0 unit vector in world space (fixed — no rotation)
+  const s0w = s0unit.clone();
+
+  for (const ax of cellOrientGroup.userData.axes) {
+    // Transform tip from group-local to world space
+    const tipWorld = ax.tip.clone().applyMatrix4(cellOrientGroup.matrixWorld);
+    // Project to NDC
+    const ndc = tipWorld.clone().project(cam);
+    const sx  = ( ndc.x * 0.5 + 0.5) * W;
+    const sy  = (-ndc.y * 0.5 + 0.5) * H;
+    const dist = Math.hypot(sx - mx, sy - my);
+    if (dist > 20) continue;
+
+    // Axis direction in world space
+    const dirWorld = ax.dir.clone().applyQuaternion(cellOrientGroup.quaternion);
+
+    const normAng = ax.lenAng;  // exported directly from Python in Å
+
+    // Orientation: direction components (normalised)
+    const dx = dirWorld.x.toFixed(4);
+    const dy = dirWorld.y.toFixed(4);
+    const dz = dirWorld.z.toFixed(4);
+
+    // Angle between this axis and beam (s0unit)
+    const cosA = Math.abs(dirWorld.dot(s0w));
+    const angDeg = (Math.acos(Math.min(1, cosA)) * 180 / Math.PI).toFixed(2);
+
+    const tt = document.getElementById('tooltip');
+    document.getElementById('tt-hkl').textContent = ax.label + ' axis';
+    document.getElementById('tt-table').innerHTML = [
+      ['length', normAng.toFixed(3) + ' Å'],
+      ['direction', dx + '  ' + dy + '  ' + dz],
+      ['∠ beam', angDeg + '°'],
+    ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+    tt.style.left    = Math.min(sx + 14, W - 260) + 'px';
+    tt.style.top     = Math.max(sy - 14, 4) + 'px';
+    tt.style.display = 'block';
+    _lastHover = -2;  // sentinel: cell-orient tooltip active
+    return true;
+  }
+  return false;
+}
+
+function checkTooltip() {
+  if (!pointsObject) return;
+
+  // Check cell orientation axes first
+  if (checkCellOrientTooltip()) return;
+
+  _ray.setFromCamera(_mouse, activeCamera());
+  const hits = _ray.intersectObject(pointsObject);
+  let hit = null;
+  for (const h of hits) {
+    if (pointsObject.geometry.attributes.alpha.getX(h.index) > 0.5) { hit = h; break; }
+  }
+  const tt = document.getElementById('tooltip');
+  if (!hit) { tt.style.display = 'none'; _lastHover = -1; return; }
+  const idx = hit.index;
+  if (idx === _lastHover) return;
+  _lastHover = idx;
+
+  const d = rawData.data, rows = [];
+  const hklEl = document.getElementById('tt-hkl');
+  if (tooltipFields.has('hkl') && d.h !== undefined && d.indexed_status[idx])
+    hklEl.textContent = `(${-d.h[idx]}, ${-d.k[idx]}, ${-d.l[idx]})`;  // negated to match dials.image_viewer
+  else
+    hklEl.textContent = `spot ${idx}`;
+
+  if (tooltipFields.has('d'))
+    rows.push(['d', d.d_spacing[idx].toFixed(3) + ' Å']);
+  if (tooltipFields.has('kxyz'))
+    rows.push(['kx ky kz',
+      rawData.points[idx].map(v => (v / rawData.scale_factor).toFixed(4)).join('  ')]);
+  if (tooltipFields.has('xyz'))
+    rows.push(['x y z px', `${d.x[idx]}  ${d.y[idx]}  ${d.z[idx]}`]);
+  if (tooltipFields.has('ios') && d.intensity && d.sigma && d.sigma[idx] > 0)
+    rows.push(['I/σ', (d.intensity[idx] / d.sigma[idx]).toFixed(1)]);
+  if (tooltipFields.has('intensity') && d.intensity)
+    rows.push(['I', d.intensity[idx] != null ? d.intensity[idx].toFixed(0) : '—']);
+  if (tooltipFields.has('panel')) rows.push(['panel', d.panel[idx]]);
+  if (tooltipFields.has('id'))    rows.push(['exp',   d.id[idx]]);
+
+  document.getElementById('tt-table').innerHTML =
+    rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+
+  const wrap = document.getElementById('canvas-wrap');
+  const mx = _mouse.x * 0.5 + 0.5, my = -_mouse.y * 0.5 + 0.5;
+  tt.style.left    = Math.min(mx * wrap.clientWidth  + 14, wrap.clientWidth  - 260) + 'px';
+  tt.style.top     = Math.max(my * wrap.clientHeight - 14, 4) + 'px';
+  tt.style.display = 'block';
+}
+
+// ============================================================
+// Render loop
+// ============================================================
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  syncOrthoCam();
+  checkTooltip();
+  renderer.render(scene, activeCamera());
+}
+
+</script>
+</body>
+</html>
