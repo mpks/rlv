@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <link rel="icon" type="image/svg+xml"
+        href="/favicon.svg"/>
+  <meta name="viewport"
+        content="width=device-width,
+                 initial-scale=1.0"/>
+  <title>RLV</title>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────── -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Reciprocal Lattice Viewer</h1>
+    <p id="info-line">No data loaded</p>
+  </div>
+
+  <div id="sidebar-body">
+
+    <!-- Experiments -->
+    <div class="section-label"
+         data-section="experiments">
+      Experiments
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content"
+         id="section-experiments">
+      <div id="exp-list"></div>
+    </div>
+
+    <!-- Filter -->
+    <div class="section-label"
+         data-section="filter">
+      Filter
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content"
+         id="section-filter">
+
+      <div class="row">
+        <label>Resolution min</label>
+        <input type="range" id="filt-dmin"
+               min="0" max="100"
+               step="0.1" value="0">
+        <input type="number"
+               id="d-min-num"
+               min="0" max="100"
+               step="0.5" value="0">
+      </div>
+
+      <div class="row">
+        <label>Resolution max</label>
+        <input type="range" id="filt-dmax"
+               min="0" max="100"
+               step="0.1" value="100">
+        <input type="number"
+               id="d-max-num"
+               min="0" max="100"
+               step="0.5" value="100">
+      </div>
+
+      <div class="row">
+        <label>Image index min</label>
+        <input type="range" id="filt-zmin"
+               min="0" max="100"
+               step="1" value="0">
+        <input type="number"
+               id="z-min-num"
+               min="0" max="100"
+               step="1" value="0">
+      </div>
+
+      <div class="row">
+        <label>Image index max</label>
+        <input type="range" id="filt-zmax"
+               min="0" max="100"
+               step="1" value="100">
+        <input type="number"
+               id="z-max-num"
+               min="0" max="100"
+               step="1" value="100">
+      </div>
+
+      <div class="row">
+        <label>Min pixels</label>
+        <input type="range"
+               id="filt-px-min"
+               min="0" max="100"
+               step="1" value="0">
+        <input type="number"
+               id="px-min-num"
+               min="0" max="100"
+               step="1" value="0">
+      </div>
+
+      <div class="row">
+        <label>Max pixels</label>
+        <input type="range"
+               id="filt-px-max"
+               min="0" max="100"
+               step="1" value="100">
+        <input type="number"
+               id="px-max-num"
+               min="0" max="100000"
+               step="1" value="100000">
+      </div>
+
+      <div class="row">
+        <label>Min partiality</label>
+        <input type="range"
+               id="filt-part-min"
+               min="0" max="1"
+               step="0.01" value="0">
+        <input type="number"
+               id="part-min-num"
+               min="0" max="1"
+               step="0.01" value="0">
+      </div>
+
+      <div class="row">
+        <label>Max partiality</label>
+        <input type="range"
+               id="filt-part-max"
+               min="0" max="1"
+               step="0.01" value="1">
+        <input type="number"
+               id="part-max-num"
+               min="0" max="1"
+               step="0.01" value="1">
+      </div>
+
+    </div><!-- /section-filter -->
+
+    <!-- Overlays -->
+    <div class="section-label"
+         data-section="overlays">
+      Overlays
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content"
+         id="section-overlays">
+
+      <div class="row">
+        <label>Rotation axis</label>
+        <div class="toggle"
+             id="tog-axis"></div>
+      </div>
+      <div class="row">
+        <label>Reciprocal cell</label>
+        <div class="toggle on"
+             id="tog-cell"></div>
+      </div>
+      <div class="row">
+        <label>Beam vector</label>
+        <div class="toggle"
+             id="tog-beam"></div>
+      </div>
+      <div class="row">
+        <label>Invert rotation axis</label>
+        <div class="toggle"
+             id="tog-inv-rot-axis"></div>
+      </div>
+      <div class="row">
+        <label>Crystal frame</label>
+        <div class="toggle"
+             id="tog-crystal-frame"></div>
+      </div>
+
+    </div><!-- /section-overlays -->
+
+    <!-- Annotations -->
+    <div class="section-label"
+         data-section="annotations">
+      Annotations
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content"
+         id="section-annotations">
+
+      <div class="row">
+        <label>Miller indices</label>
+        <div class="toggle"
+             id="tog-ann-hkl"></div>
+      </div>
+      <div class="row">
+        <label>Resolution (Å)</label>
+        <div class="toggle"
+             id="tog-ann-res"></div>
+      </div>
+      <div class="row">
+        <label>Label size</label>
+        <input type="range" id="ann-size"
+               min="10" max="52"
+               step="2" value="18">
+        <input type="number"
+               id="ann-size-num"
+               min="10" max="52"
+               step="2" value="18">
+      </div>
+
+    </div><!-- /section-annotations -->
+
+    <!-- Display -->
+    <div class="section-label"
+         data-section="display">
+      Display
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content"
+         id="section-display">
+
+      <div class="row">
+        <label>Show</label>
+        <div class="radio-group">
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="all" checked>
+            <span>All</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="indexed">
+            <span>Indexed</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="integrated">
+            <span>Integrated</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Outliers</label>
+        <div class="radio-group">
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-outliers"
+                   value="all" checked>
+            <span>All</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-outliers"
+                   value="inliers">
+            <span>Inliers</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-outliers"
+                   value="outliers">
+            <span>Outliers</span>
+          </label>
+        </div>
+      </div>
+
+    </div><!-- /section-display -->
+
+  </div><!-- /sidebar-body -->
+</div><!-- /sidebar -->
+
+<!-- ── Canvas ──────────────────────── -->
+<div id="canvas-wrap">
+  <div id="loading">3D view</div>
+  <div id="axes">
+    <div class="ax">
+      <div class="ax-line"
+           style="background:#e74c3c">
+      </div>
+      <span style="color:#e74c3c">a*</span>
+    </div>
+    <div class="ax">
+      <div class="ax-line"
+           style="background:#2ecc71">
+      </div>
+      <span style="color:#2ecc71">b*</span>
+    </div>
+    <div class="ax">
+      <div class="ax-line"
+           style="background:#3498db">
+      </div>
+      <span style="color:#3498db">c*</span>
+    </div>
+  </div>
+  <div id="tooltip">
+    <div class="hkl" id="tt-hkl"></div>
+    <table id="tt-table"></table>
+  </div>
+</div>
+
+<!-- ── Toolbar ─────────────────────── -->
+<div id="toolbar">
+  <button class="tbtn active"
+          id="btn-rotate">Rotate</button>
+  <div style="flex:1"></div>
+  <button class="tbtn"
+          id="btn-open-dials">Open</button>
+</div>
+
+<!-- ── Statusbar ───────────────────── -->
+<div id="statusbar">
+  <span>
+    <span class="sdot"></span>
+    <span id="status-msg">Ready</span>
+  </span>
+  <span id="status-count"></span>
+  <span>
+    Drag to rotate · Scroll to zoom ·
+    Middle-drag to pan
+  </span>
+</div>
+
+<!-- ── Collapse button ─────────────── -->
+<button id="btn-collapse"
+        title="Toggle sidebar">‹</button>
+
+<!-- ── Open dialog ─────────────────── -->
+<div id="dlg-open"
+     style="display:none;
+            position:fixed;inset:0;
+            background:rgba(0,0,0,.7);
+            align-items:center;
+            justify-content:center;
+            z-index:9999">
+  <div style="background:#111118;
+              border:1px solid #2a2a3a;
+              border-radius:10px;
+              padding:24px;width:420px">
+
+    <div style="font-size:15px;
+                font-weight:600;
+                color:#eee;
+                margin-bottom:16px">
+      Open DIALS files
+    </div>
+
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;
+                  color:#aaa;
+                  margin-bottom:4px">
+        Experiment file (.expt)
+      </div>
+      <div style="display:flex;gap:6px">
+        <input id="dlg-expt-name"
+               type="text" readonly
+               placeholder="no file selected"
+               style="flex:1;
+                      background:#0d0d14;
+                      border:1px solid #333;
+                      border-radius:4px;
+                      color:#666;
+                      font-size:11px;
+                      padding:4px 8px">
+        <label style="padding:4px 10px;
+                      background:#152a42;
+                      border:1px solid #185FA5;
+                      border-radius:4px;
+                      color:#7ab8f5;
+                      font-size:11px;
+                      cursor:pointer;
+                      white-space:nowrap">
+          Browse…
+          <input type="file" accept=".expt"
+                 style="display:none"
+                 id="dlg-expt-input">
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;
+                  color:#aaa;
+                  margin-bottom:4px">
+        Reflections file (.refl)
+      </div>
+      <div style="display:flex;gap:6px">
+        <input id="dlg-refl-name"
+               type="text" readonly
+               placeholder="no file selected"
+               style="flex:1;
+                      background:#0d0d14;
+                      border:1px solid #333;
+                      border-radius:4px;
+                      color:#666;
+                      font-size:11px;
+                      padding:4px 8px">
+        <label style="padding:4px 10px;
+                      background:#152a42;
+                      border:1px solid #185FA5;
+                      border-radius:4px;
+                      color:#7ab8f5;
+                      font-size:11px;
+                      cursor:pointer;
+                      white-space:nowrap">
+          Browse…
+          <input type="file" accept=".refl"
+                 style="display:none"
+                 id="dlg-refl-input">
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;
+                justify-content:flex-end;
+                gap:8px">
+      <button id="dlg-cancel"
+              style="padding:6px 16px;
+                     background:transparent;
+                     border:1px solid #333;
+                     border-radius:4px;
+                     color:#999;
+                     cursor:pointer">
+        Cancel
+      </button>
+      <button id="dlg-load"
+              style="padding:6px 16px;
+                     background:#152a42;
+                     border:1px solid #185FA5;
+                     border-radius:4px;
+                     color:#7ab8f5;
+                     cursor:pointer;
+                     font-weight:600">
+        Load
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script type="module" src="/src/main.js">
+</script>
+</body>
+</html>
