@@ -41,7 +41,7 @@
          id="section-filter">
 
       <div class="row">
-        <label>Resolution min</label>
+        <label>Resolution min (Å)</label>
         <input type="range" id="filt-dmin"
                min="0" max="100"
                step="0.1" value="0">
@@ -52,7 +52,7 @@
       </div>
 
       <div class="row">
-        <label>Resolution max</label>
+        <label>Resolution max (Å)</label>
         <input type="range" id="filt-dmax"
                min="0" max="100"
                step="0.1" value="100">
@@ -260,6 +260,18 @@
         </div>
       </div>
 
+      <div class="row">
+        <label>Point size</label>
+        <input type="range"
+               id="filt-point-size"
+               min="1" max="20"
+               step="0.5" value="5">
+        <input type="number"
+               id="point-size-num"
+               min="1" max="20"
+               step="0.5" value="5">
+      </div>
+
     </div><!-- /section-display -->
 
   </div><!-- /sidebar-body -->
@@ -404,6 +416,18 @@
                  id="dlg-refl-input">
         </label>
       </div>
+    </div>
+
+    <div style="margin-bottom:16px;
+                font-size:12px;
+                color:#aaa">
+      <label style="display:flex;
+        align-items:center;
+        gap:6px;cursor:pointer">
+        <input type="checkbox"
+          id="dlg-add-mode">
+        Add to current data
+      </label>
     </div>
 
     <div style="display:flex;
