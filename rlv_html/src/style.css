@@ -253,6 +253,13 @@ select {
   color: #7ab8f5;
 }
 
+.category-counts {
+  font-size: 10px;
+  color: #556;
+  padding: 0 12px 4px;
+  line-height: 1.4;
+}
+
 /* ── Experiment list ─────────────────── */
 #exp-list {
   max-height: calc(4 * 28px);
