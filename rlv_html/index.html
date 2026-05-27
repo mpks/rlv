@@ -145,7 +145,7 @@
 
       <div class="row">
         <label>Rotation axis</label>
-        <div class="toggle"
+        <div class="toggle on"
              id="tog-axis"></div>
       </div>
       <div class="row">
@@ -155,7 +155,7 @@
       </div>
       <div class="row">
         <label>Beam vector</label>
-        <div class="toggle"
+        <div class="toggle on"
              id="tog-beam"></div>
       </div>
       <div class="row">
@@ -167,6 +167,11 @@
         <label>Crystal frame</label>
         <div class="toggle"
              id="tog-crystal-frame"></div>
+      </div>
+      <div class="row">
+        <label>Active exp. info</label>
+        <div class="toggle on"
+             id="tog-exp-info"></div>
       </div>
 
     </div><!-- /section-overlays -->
@@ -289,7 +294,7 @@
              id="tog-inspect-sphere"></div>
       </div>
       <div class="row">
-        <label>d (Å)</label>
+        <label>Resolution (Å)</label>
         <input type="range"
                id="inspect-d-slider"
                min="0.001" max="1"
@@ -438,7 +443,7 @@
         align-items:center;
         gap:6px;cursor:pointer">
         <input type="checkbox"
-          id="dlg-add-mode">
+          id="dlg-add-mode" checked>
         Add to current data
       </label>
     </div>

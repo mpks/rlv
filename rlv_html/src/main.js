@@ -16,6 +16,7 @@ import {
   addDataset,
   clearDatasets,
   onChange,
+  totalSpots,
 } from './state/store.js';
 
 import {
@@ -114,8 +115,7 @@ async function loadFiles(
     buildExpList();
     setInfoLine(
       `${store.datasets.length} dataset(s)`
-      + ` · ${rawData.points.length
-               .toLocaleString()} spots`);
+      + ` · ${totalSpots().toLocaleString()} spots`);
 
     hideLoading();
   } catch(e) {

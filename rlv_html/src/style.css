@@ -12,7 +12,7 @@ body {
   font-size: 13px;
   background: #0d0d14;
   color: #ccc;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 350px 1fr;
   grid-template-rows: 36px 1fr 22px;
   grid-template-areas:
     "sidebar toolbar"
@@ -312,20 +312,169 @@ select {
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1px solid
-    rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: border-color .15s,
+              transform .15s;
+}
+
+.exp-color-circle:hover {
+  border-color: rgba(255,255,255,0.5);
+  transform: scale(1.25);
+}
+
+/* ── Color picker popup ───────────────── */
+.cp-popup {
+  position: fixed;
+  background: #1a1a26;
+  border: 1px solid #2a2a3a;
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 10000;
+  box-shadow: 0 8px 28px rgba(0,0,0,.75);
+  user-select: none;
+  width: 220px;
+}
+
+.cp-sv-wrap {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  border-radius: 4px;
+  cursor: crosshair;
+}
+
+.cp-sv {
+  display: block;
+  width: 200px;
+  height: 150px;
+  border-radius: 4px;
+}
+
+.cp-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6);
+}
+
+.cp-hue-wrap {
+  position: relative;
+  margin-top: 8px;
+  height: 14px;
+}
+
+.cp-hue {
+  display: block;
+  width: 200px;
+  height: 14px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.cp-hue-thumb {
+  position: absolute;
+  top: -1px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6);
+}
+
+.cp-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cp-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.cp-hex {
+  flex: 1;
+  background: #0d0d14;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 12px;
+  font-family: monospace;
+  padding: 4px 6px;
+  outline: none;
+}
+
+.cp-hex:focus {
+  border-color: #185FA5;
 }
 
 .exp-label {
   font-size: 11px;
   color: #aaa;
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .exp-count {
   font-size: 10px;
   color: #555;
   font-family: monospace;
+  margin-left: auto;
+}
+
+.exp-user-label {
+  width: 80px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #5a9fd4;
+  font-size: 11px;
+  padding: 1px 4px;
+  margin-left: -4px;
+  outline: none;
+  cursor: text;
+  transition: border-color .15s,
+              background .15s;
+}
+
+.exp-user-label::placeholder {
+  color: #3a3a4a;
+}
+
+.exp-user-label:hover {
+  border-color: #333;
+}
+
+.exp-user-label:focus {
+  border-color: #185FA5;
+  background: #1a1a26;
+  color: #ccc;
+}
+
+.exp-remove {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.exp-remove:hover {
+  color: #e05050;
 }
 
 /* ── Toolbar ─────────────────────────── */
