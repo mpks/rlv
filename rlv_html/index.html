@@ -309,26 +309,6 @@
 <div id="canvas-wrap">
   <div id="loading">3D view</div>
   <div id="inspection-label"></div>
-  <div id="axes">
-    <div class="ax">
-      <div class="ax-line"
-           style="background:#e74c3c">
-      </div>
-      <span style="color:#e74c3c">a*</span>
-    </div>
-    <div class="ax">
-      <div class="ax-line"
-           style="background:#2ecc71">
-      </div>
-      <span style="color:#2ecc71">b*</span>
-    </div>
-    <div class="ax">
-      <div class="ax-line"
-           style="background:#3498db">
-      </div>
-      <span style="color:#3498db">c*</span>
-    </div>
-  </div>
   <div id="tooltip">
     <div class="hkl" id="tt-hkl"></div>
     <table id="tt-table"></table>
@@ -337,8 +317,12 @@
 
 <!-- ── Toolbar ─────────────────────── -->
 <div id="toolbar">
-  <button class="tbtn active"
-          id="btn-rotate">Rotate</button>
+  <span class="tbtn-label">Align:</span>
+  <button class="tbtn" id="btn-align-rot">rot</button>
+  <button class="tbtn" id="btn-align-beam">beam</button>
+  <button class="tbtn" id="btn-align-astar">a*</button>
+  <button class="tbtn" id="btn-align-bstar">b*</button>
+  <button class="tbtn" id="btn-align-cstar">c*</button>
   <div style="flex:1"></div>
   <button class="tbtn"
           id="btn-open-dials">Open</button>

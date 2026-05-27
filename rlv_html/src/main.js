@@ -26,6 +26,8 @@ import {
 } from './scene/renderer.js';
 import { buildPointCloud }
   from './scene/points.js';
+import { initOverlays }
+  from './scene/overlays.js';
 
 import { applyFilters }
   from './filters/filters.js';
@@ -35,7 +37,7 @@ import { recolour }
 import { initSelection }
   from './selection/selection.js';
 
-import { initTooltip }
+import { initTooltip, showPickRadius }
   from './labels/tooltip.js';
 
 import { initToolbar }
@@ -132,6 +134,7 @@ onChange('colors-changed', () => {
 
 initRenderer();
 startRenderLoop();
+initOverlays();
 initToolbar();
 initCollapsibleSections();
 initToggles();

@@ -366,6 +366,13 @@ select {
 
 .tbtn:hover { background: #1e1e2e; }
 
+.tbtn-label {
+  font-size: 11px;
+  color: #555;
+  padding-right: 2px;
+  white-space: nowrap;
+}
+
 .tbtn.active {
   background: #152a42;
   color: #7ab8f5;
