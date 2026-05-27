@@ -44,12 +44,17 @@ import {
   initCollapsibleSections,
   initToggles,
   initFilterPanel,
+  initToolsPanel,
   buildExpList,
   updateResolutionRange,
+  updateZRange,
+  updateInspectionRange,
   setInfoLine,
 } from './ui/sidebar.js';
 import { initDialog }
   from './ui/dialog.js';
+import { initDropZone }
+  from './ui/dropzone.js';
 import {
   showLoading,
   hideLoading,
@@ -94,6 +99,13 @@ async function loadFiles(
     if (mode === 'replace') fitCamera();
 
     updateResolutionRange();
+    updateZRange();
+    updateInspectionRange(
+      store.datasets.reduce((lo, ds) => {
+        for (const d of ds.rawData.data.d_spacing)
+          if (d > 0 && d < lo) lo = d;
+        return lo;
+      }, Infinity));
     applyFilters();
     buildExpList();
     setInfoLine(
@@ -122,6 +134,8 @@ initToolbar();
 initCollapsibleSections();
 initToggles();
 initFilterPanel();
+initToolsPanel();
 initDialog(loadFiles);
+initDropZone(loadFiles);
 initSelection();
 initTooltip();
