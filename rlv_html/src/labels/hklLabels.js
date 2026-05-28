@@ -97,46 +97,53 @@ function _build() {
   if (!pts) return;
   const pos = pts.geometry.attributes.position;
 
-  let globalIdx = 0, count = 0;
-  outer:
+  // When both sub-spot annotations are on, use
+  // two distinct slots; when only one is on,
+  // it collapses to the middle slot.
+  const _resGapY = -_VGAP / 2;
+  const _intGapY = (_showRes && _showInt)
+    ? -_VGAP * 2 : -_VGAP / 2;
+
+  let globalIdx = 0;
+  let hklN = 0, resN = 0, intN = 0;
+
   for (const ds of store.datasets) {
     const d  = ds.rawData.data;
     const np = ds.rawData.points.length;
     for (let i = 0; i < np; i++, globalIdx++) {
-      if (count >= MAX_LABELS) break outer;
-
       const indexed = !!d.indexed_status[i];
       const bx = pos.getX(globalIdx);
       const by = pos.getY(globalIdx);
       const bz = pos.getZ(globalIdx);
 
-      if (_showHKL && indexed) {
+      if (_showHKL && indexed
+          && hklN < MAX_LABELS) {
         _push(_makeSprite(
             `${d.h[i]} ${d.k[i]} ${d.l[i]}`,
             '#ffffff', _CANw),
           globalIdx, bx, by, bz,
           0, +_VGAP, _CANw);
-        if (++count >= MAX_LABELS) break outer;
+        hklN++;
       }
 
-      if (_showRes) {
+      if (_showRes && resN < MAX_LABELS) {
         const dsp = d.d_spacing?.[i] ?? 0;
         _push(_makeSprite(
             `${dsp > 0 ? dsp.toFixed(2) : '—'} Å`,
             '#4da6ff', _CANw),
           globalIdx, bx, by, bz,
-          0, -_VGAP, _CANw);
-        if (++count >= MAX_LABELS) break outer;
+          0, _resGapY, _CANw);
+        resN++;
       }
 
-      if (_showInt) {
+      if (_showInt && intN < MAX_LABELS) {
         const v = d.intensity?.[i];
         if (v != null) {
           _push(_makeSprite(
               _fmtI(v), '#ff4444', _CANw),
             globalIdx, bx, by, bz,
-            0, -_VGAP * 2, _CANw);
-          if (++count >= MAX_LABELS) break outer;
+            0, _intGapY, _CANw);
+          intN++;
         }
       }
     }
