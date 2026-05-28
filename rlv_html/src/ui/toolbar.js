@@ -2,8 +2,14 @@
  * ui/toolbar.js
  */
 
-import { onResize, alignToVector }
+import { onResize, alignToVector, setSpin }
   from '../scene/renderer.js';
+
+function _stopSpin() {
+  setSpin(false);
+  document.getElementById('btn-spin')
+    ?.classList.remove('active');
+}
 import { store } from '../state/store.js';
 
 function _activeExpt() {
@@ -22,7 +28,7 @@ function _wire(id, getVec) {
   if (!btn) return;
   btn.addEventListener('click', () => {
     const v = getVec();
-    if (v) alignToVector(v);
+    if (v) { _stopSpin(); alignToVector(v); }
   });
 }
 
@@ -43,6 +49,17 @@ export function initToolbar() {
         collapse.textContent.trim() === '‹'
           ? '›' : '‹';
       setTimeout(onResize, 300);
+    });
+  }
+
+  const spinBtn =
+    document.getElementById('btn-spin');
+  if (spinBtn) {
+    spinBtn.addEventListener('click', () => {
+      const on =
+        !spinBtn.classList.contains('active');
+      spinBtn.classList.toggle('active', on);
+      setSpin(on);
     });
   }
 

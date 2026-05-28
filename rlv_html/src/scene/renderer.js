@@ -26,6 +26,11 @@ let _orthoZoom      = 1.0;
 let _running        = false;
 const _frameCallbacks = [];
 
+let _spinning       = false;
+let _lastSpinTime   = null;
+let _spinAxis       = new THREE.Vector3(0, 1, 0);
+const _SPIN_RADS_PER_SEC = (1.75 / 60) * 2 * Math.PI; // 1.75 RPM
+
 // ── Init ──────────────────────────────────
 
 export function initRenderer() {
@@ -108,9 +113,30 @@ export function addFrameCallback(fn) {
   _frameCallbacks.push(fn);
 }
 
+export function setSpin(on) {
+  _spinning = on;
+  _lastSpinTime = null;
+  if (on && camera)
+    _spinAxis = camera.up.clone().normalize();
+}
+
 function _loop() {
   requestAnimationFrame(_loop);
   controls.update();
+  if (_spinning) {
+    const now = performance.now();
+    if (_lastSpinTime !== null) {
+      const dt = Math.min(
+        (now - _lastSpinTime) / 1000, 0.1);
+      const angle = _SPIN_RADS_PER_SEC * dt;
+      const q = new THREE.Quaternion()
+        .setFromAxisAngle(_spinAxis, angle);
+      camera.position.applyQuaternion(q);
+      controls.target.applyQuaternion(q);
+      camera.lookAt(controls.target);
+    }
+    _lastSpinTime = now;
+  }
   _syncOrtho();
   for (const fn of _frameCallbacks) fn();
   renderer.render(scene, camera);
