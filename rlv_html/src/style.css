@@ -29,6 +29,16 @@ body.sidebar-hidden {
   grid-template-columns: 0 1fr;
 }
 
+#toolbar-spacer {
+  width: 0;
+  flex-shrink: 0;
+  transition: width 0.25s ease;
+}
+
+body.sidebar-hidden #toolbar-spacer {
+  width: 28px;
+}
+
 body.toolbar-hidden {
   grid-template-rows: 0 1fr 22px;
 }
@@ -820,7 +830,7 @@ canvas {
 /* ── Collapse button ─────────────────── */
 #btn-collapse {
   position: fixed;
-  top: 8px;
+  top: 4px;
   left: 8px;
   z-index: 100;
   background: #111118;

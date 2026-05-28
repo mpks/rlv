@@ -39,12 +39,8 @@ export function initToolbar() {
     collapse.addEventListener('click', () => {
       document.getElementById('sidebar')
         .classList.toggle('hidden');
-      document.getElementById('toolbar')
-        .classList.toggle('hidden');
       document.body
         .classList.toggle('sidebar-hidden');
-      document.body
-        .classList.toggle('toolbar-hidden');
       collapse.textContent =
         collapse.textContent.trim() === '‹'
           ? '›' : '‹';
@@ -73,4 +69,30 @@ export function initToolbar() {
     () => _activeExpt()?.recip_latt_vectors?.[1]);
   _wire('btn-align-cstar',
     () => _activeExpt()?.recip_latt_vectors?.[2]);
+
+  const fsBtn =
+    document.getElementById('btn-fullscreen');
+  const fsExpand =
+    document.getElementById('fs-icon-expand');
+  const fsCompress =
+    document.getElementById('fs-icon-compress');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement
+          .requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+    document.addEventListener(
+      'fullscreenchange', () => {
+        const full = !!document.fullscreenElement;
+        fsExpand.style.display =
+          full ? 'none' : '';
+        fsCompress.style.display =
+          full ? '' : 'none';
+        setTimeout(onResize, 50);
+      });
+  }
 }

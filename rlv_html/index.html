@@ -311,6 +311,7 @@
 
 <!-- ── Toolbar ─────────────────────── -->
 <div id="toolbar">
+  <div id="toolbar-spacer"></div>
   <span class="tbtn-label">Align:</span>
   <button class="tbtn" id="btn-align-rot">rot</button>
   <button class="tbtn" id="btn-align-beam">beam</button>
@@ -319,6 +320,32 @@
   <button class="tbtn" id="btn-align-cstar">c*</button>
   <div style="flex:1"></div>
   <button class="tbtn" id="btn-spin">Spin</button>
+  <button class="tbtn" id="btn-fullscreen"
+          title="Toggle fullscreen">
+    <svg id="fs-icon-expand"
+         width="13" height="13"
+         viewBox="0 0 14 14"
+         fill="none" stroke="currentColor"
+         stroke-width="1.8"
+         stroke-linecap="round">
+      <polyline points="4,1 1,1 1,4"/>
+      <polyline points="10,1 13,1 13,4"/>
+      <polyline points="4,13 1,13 1,10"/>
+      <polyline points="10,13 13,13 13,10"/>
+    </svg>
+    <svg id="fs-icon-compress"
+         width="13" height="13"
+         viewBox="0 0 14 14"
+         fill="none" stroke="currentColor"
+         stroke-width="1.8"
+         stroke-linecap="round"
+         style="display:none">
+      <polyline points="1,4 4,4 4,1"/>
+      <polyline points="13,4 10,4 10,1"/>
+      <polyline points="1,10 4,10 4,13"/>
+      <polyline points="13,10 10,10 10,13"/>
+    </svg>
+  </button>
   <div style="flex:1"></div>
   <button class="tbtn"
           id="btn-open-dials">Open</button>
