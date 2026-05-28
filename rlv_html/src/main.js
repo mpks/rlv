@@ -40,6 +40,8 @@ import { initSelection }
 
 import { initTooltip, showPickRadius }
   from './labels/tooltip.js';
+import { initHKLLabels, rebuildHKLLabels }
+  from './labels/hklLabels.js';
 
 import { initToolbar }
   from './ui/toolbar.js';
@@ -107,6 +109,7 @@ async function loadFiles(
     updateZRange();
     updatePxRange();
     updateHKLRange();
+    rebuildHKLLabels();
     updateInspectionRange(
       store.datasets.reduce((lo, ds) => {
         for (const d of ds.rawData.data.d_spacing)
@@ -146,3 +149,4 @@ initDialog(loadFiles);
 initDropZone(loadFiles);
 initSelection();
 initTooltip();
+initHKLLabels();

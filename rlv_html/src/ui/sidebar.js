@@ -16,6 +16,13 @@ import { createRangeSlider }
   from './rangeSlider.js';
 import { setTooltipEnabled }
   from '../labels/tooltip.js';
+import {
+  setHKLLabelsEnabled,
+  setResLabelsEnabled,
+  setIntLabelsEnabled,
+  setHKLLabelSize,
+  rebuildHKLLabels,
+} from '../labels/hklLabels.js';
 import { expColor }
   from '../filters/colors.js';
 import {
@@ -238,6 +245,39 @@ export function initFilterPanel() {
         togTT.classList.contains('on'));
     });
   }
+
+  // Miller index label toggle
+  const togHKL =
+    document.getElementById('tog-ann-hkl');
+  if (togHKL) {
+    togHKL.addEventListener('click', () => {
+      setHKLLabelsEnabled(
+        togHKL.classList.contains('on'));
+    });
+  }
+
+  // Resolution label toggle
+  const togRes =
+    document.getElementById('tog-ann-res');
+  if (togRes) {
+    togRes.addEventListener('click', () => {
+      setResLabelsEnabled(
+        togRes.classList.contains('on'));
+    });
+  }
+
+  // Intensity label toggle
+  const togInt =
+    document.getElementById('tog-ann-int');
+  if (togInt) {
+    togInt.addEventListener('click', () => {
+      setIntLabelsEnabled(
+        togInt.classList.contains('on'));
+    });
+  }
+
+  _syncSlider('ann-size', 'ann-size-num',
+    setHKLLabelSize);
 
   // Invert rotation axis toggle
   const togInv = document.getElementById(
@@ -475,6 +515,7 @@ export function buildExpList() {
           updateZRange();
           updatePxRange();
           updateHKLRange();
+          rebuildHKLLabels();
           buildExpList();
           setInfoLine(
             `${store.datasets.length} dataset(s)`
