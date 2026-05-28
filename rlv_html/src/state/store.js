@@ -63,10 +63,14 @@ export const store = {
     zMax:           Infinity,
     pxMin:          0,
     pxMax:          Infinity,
+    hMin:           -Infinity,
+    hMax:           Infinity,
+    kMin:           -Infinity,
+    kMax:           Infinity,
+    lMin:           -Infinity,
+    lMax:           Infinity,
     // 'all' | 'indexed' | 'unindexed' | 'integrated'
     showMode:       'all',
-    showInliers:    true,
-    showOutliers:   true,
     // Set of 'datasetId:expId' strings
     // that are currently visible
     visibleExpts:   new Set(),

@@ -63,7 +63,6 @@ export function applyFilters() {
       // Spot category filter
       const integr  = d.integrated_status[i];
       const indexed = d.indexed_status[i];
-      const outlier = d.outlier_status[i];
       const mode    = f.showMode;
 
       if (mode === 'indexed'
@@ -79,12 +78,6 @@ export function applyFilters() {
         globalIdx++; continue;
       }
 
-      if (outlier  && !f.showOutliers) {
-        globalIdx++; continue;
-      }
-      if (!outlier && !f.showInliers) {
-        globalIdx++; continue;
-      }
 
       // d-spacing filter (Å)
       const dsp = d.d_spacing[i];
@@ -111,6 +104,17 @@ export function applyFilters() {
         }
       }
 
+      // Miller index filter — indexed spots only
+      if (d.indexed_status[i]) {
+        const h = d.h[i];
+        const k = d.k[i];
+        const l = d.l[i];
+        if (h < f.hMin || h > f.hMax
+            || k < f.kMin || k > f.kMax
+            || l < f.lMin || l > f.lMax) {
+          globalIdx++; continue;
+        }
+      }
 
       vis[globalIdx] = 1;
       visible++;
@@ -170,16 +174,32 @@ export function setPxMax(v) {
     isNaN(p) ? Infinity : p;
   applyFilters();
 }
+export function setHMin(v) {
+  store.filters.hMin = isFinite(v) ? v : -Infinity;
+  applyFilters();
+}
+export function setHMax(v) {
+  store.filters.hMax = isFinite(v) ? v : Infinity;
+  applyFilters();
+}
+export function setKMin(v) {
+  store.filters.kMin = isFinite(v) ? v : -Infinity;
+  applyFilters();
+}
+export function setKMax(v) {
+  store.filters.kMax = isFinite(v) ? v : Infinity;
+  applyFilters();
+}
+export function setLMin(v) {
+  store.filters.lMin = isFinite(v) ? v : -Infinity;
+  applyFilters();
+}
+export function setLMax(v) {
+  store.filters.lMax = isFinite(v) ? v : Infinity;
+  applyFilters();
+}
 export function setShowMode(mode) {
   store.filters.showMode = mode;
-  applyFilters();
-}
-export function setShowInliers(v) {
-  store.filters.showInliers = !!v;
-  applyFilters();
-}
-export function setShowOutliers(v) {
-  store.filters.showOutliers = !!v;
   applyFilters();
 }
 export function setExpVisible(

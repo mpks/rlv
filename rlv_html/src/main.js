@@ -52,6 +52,7 @@ import {
   updateResolutionRange,
   updateZRange,
   updatePxRange,
+  updateHKLRange,
   updateInspectionRange,
   setInfoLine,
 } from './ui/sidebar.js';
@@ -105,6 +106,7 @@ async function loadFiles(
     updateResolutionRange();
     updateZRange();
     updatePxRange();
+    updateHKLRange();
     updateInspectionRange(
       store.datasets.reduce((lo, ds) => {
         for (const d of ds.rawData.data.d_spacing)

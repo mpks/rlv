@@ -153,14 +153,14 @@ body.toolbar-hidden {
 
 /* ── Inputs ──────────────────────────── */
 input[type=range] {
-  width: 80px;
+  width: 64px;
   accent-color: #185FA5;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 input[type=number] {
-  width: 52px;
+  width: 64px;
   background: #1a1a26;
   border: 1px solid #333;
   border-radius: 4px;
@@ -174,6 +174,76 @@ input[type=number] {
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
+}
+
+/* ── Double-handle range slider ──────────── */
+.dbl-range-row {
+  padding: 4px 8px; /* 7-8px thumb overhang clearance */
+}
+
+.row.res-row {
+  align-items: flex-start;
+}
+
+.res-filter-right {
+  width: 136px; /* = 2 × 64px number + 8px gap */
+  flex-shrink: 0;
+}
+
+.res-num-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.res-num-row input[type=number] {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+}
+
+.dbl-range-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: #2a2a3a;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.dbl-range-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #185FA5;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.dbl-range-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #bbb;
+  border: 2px solid #185FA5;
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  box-sizing: border-box;
+  z-index: 1;
+  transition: background .1s;
+}
+
+.dbl-range-thumb:hover {
+  background: #fff;
+}
+
+.range-sep {
+  color: #555;
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 select {

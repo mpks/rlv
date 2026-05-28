@@ -40,74 +40,89 @@
     <div class="section-content"
          id="section-filter">
 
-      <div class="row">
-        <label>Resolution min (Å)</label>
-        <input type="range" id="filt-dmin"
-               min="0" max="100"
-               step="0.1" value="0">
-        <input type="number"
-               id="d-min-num"
-               min="0" max="100"
-               step="0.5" value="0">
+      <div class="row res-row">
+        <label>Resolution (Å)</label>
+        <div class="res-filter-right">
+          <div id="res-range"></div>
+          <div class="res-num-row">
+            <input type="number" id="res-num-lo"
+                   step="0.1">
+            <span class="range-sep">–</span>
+            <input type="number" id="res-num-hi"
+                   step="0.1">
+          </div>
+        </div>
       </div>
 
-      <div class="row">
-        <label>Resolution max (Å)</label>
-        <input type="range" id="filt-dmax"
-               min="0" max="100"
-               step="0.1" value="100">
-        <input type="number"
-               id="d-max-num"
-               min="0" max="100"
-               step="0.5" value="100">
+      <div class="row res-row">
+        <label>Image index</label>
+        <div class="res-filter-right">
+          <div id="z-range"></div>
+          <div class="res-num-row">
+            <input type="number" id="z-num-lo"
+                   step="1">
+            <span class="range-sep">–</span>
+            <input type="number" id="z-num-hi"
+                   step="1">
+          </div>
+        </div>
       </div>
 
-      <div class="row">
-        <label>Image index min</label>
-        <input type="range" id="filt-zmin"
-               min="0" max="100"
-               step="1" value="0">
-        <input type="number"
-               id="z-min-num"
-               min="0" max="100"
-               step="1" value="0">
+      <div class="row res-row">
+        <label>Spot pixels (N)</label>
+        <div class="res-filter-right">
+          <div id="px-range"></div>
+          <div class="res-num-row">
+            <input type="number" id="px-num-lo"
+                   step="1">
+            <span class="range-sep">–</span>
+            <input type="number" id="px-num-hi"
+                   step="1">
+          </div>
+        </div>
       </div>
 
-      <div class="row">
-        <label>Image index max</label>
-        <input type="range" id="filt-zmax"
-               min="0" max="100"
-               step="1" value="100">
-        <input type="number"
-               id="z-max-num"
-               min="0" max="100"
-               step="1" value="100">
+      <div class="row res-row">
+        <label>H index</label>
+        <div class="res-filter-right">
+          <div id="h-range"></div>
+          <div class="res-num-row">
+            <input type="number" id="h-num-lo"
+                   step="1">
+            <span class="range-sep">–</span>
+            <input type="number" id="h-num-hi"
+                   step="1">
+          </div>
+        </div>
       </div>
 
-      <div class="row">
-        <label>Min pixels</label>
-        <input type="range"
-               id="filt-px-min"
-               min="0" max="100"
-               step="1" value="0">
-        <input type="number"
-               id="px-min-num"
-               min="0" max="100"
-               step="1" value="0">
+      <div class="row res-row">
+        <label>K index</label>
+        <div class="res-filter-right">
+          <div id="k-range"></div>
+          <div class="res-num-row">
+            <input type="number" id="k-num-lo"
+                   step="1">
+            <span class="range-sep">–</span>
+            <input type="number" id="k-num-hi"
+                   step="1">
+          </div>
+        </div>
       </div>
 
-      <div class="row">
-        <label>Max pixels</label>
-        <input type="range"
-               id="filt-px-max"
-               min="0" max="100"
-               step="1" value="100">
-        <input type="number"
-               id="px-max-num"
-               min="0" max="100000"
-               step="1" value="100000">
+      <div class="row res-row">
+        <label>L index</label>
+        <div class="res-filter-right">
+          <div id="l-range"></div>
+          <div class="res-num-row">
+            <input type="number" id="l-num-lo"
+                   step="1">
+            <span class="range-sep">–</span>
+            <input type="number" id="l-num-hi"
+                   step="1">
+          </div>
+        </div>
       </div>
-
 
     </div><!-- /section-filter -->
 
@@ -233,29 +248,6 @@
         </div>
       </div>
 
-      <div class="row">
-        <label>Outliers</label>
-        <div class="radio-group">
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-outliers"
-                   value="all" checked>
-            <span>All</span>
-          </label>
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-outliers"
-                   value="inliers">
-            <span>Inliers</span>
-          </label>
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-outliers"
-                   value="outliers">
-            <span>Outliers</span>
-          </label>
-        </div>
-      </div>
 
       <div class="row">
         <label>Point size</label>

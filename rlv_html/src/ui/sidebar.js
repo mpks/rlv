@@ -12,6 +12,8 @@ import { store, setExpColor, setExpOpacity, setActiveExp, setOverlay, removeData
   from '../state/store.js';
 import { showColorPicker }
   from './colorPicker.js';
+import { createRangeSlider }
+  from './rangeSlider.js';
 import { setTooltipEnabled }
   from '../labels/tooltip.js';
 import { expColor }
@@ -20,11 +22,12 @@ import {
   setDMin, setDMax,
   setZMin, setZMax,
   setPxMin, setPxMax,
+  setHMin, setHMax,
+  setKMin, setKMax,
+  setLMin, setLMax,
   setShowMode,
-  setShowInliers, setShowOutliers,
   setExpVisible,
   applyFilters,
-
 } from '../filters/filters.js';
 import {
   recolour,
@@ -48,6 +51,14 @@ import {
   hasCrystal,
   transformExpOverlayVectors,
 } from '../io/rlv_io.js';
+
+// ── Module state ─────────────────────────
+let _resSlider = null;
+let _zSlider   = null;
+let _pxSlider  = null;
+let _hSlider   = null;
+let _kSlider   = null;
+let _lSlider   = null;
 
 // ── Collapsible sections ──────────────────
 
@@ -97,30 +108,104 @@ export function isToggleOn(id) {
  * Call once after DOM is ready.
  */
 export function initFilterPanel() {
-  _syncDStarSlider(
-    'filt-dmin', 'd-min-num', setDMin);
-  _syncDStarSlider(
-    'filt-dmax', 'd-max-num', setDMax);
-  _syncSlider(
-    'filt-zmin', 'z-min-num', setZMin);
-  _syncSlider(
-    'filt-zmax', 'z-max-num', setZMax);
-  _syncPxSlider(
-    'filt-px-min', 'px-min-num', setPxMin);
-  _syncPxSlider(
-    'filt-px-max', 'px-max-num', setPxMax);
+  _resSlider = createRangeSlider(
+    document.getElementById('res-range'),
+    {
+      numLo: document.getElementById('res-num-lo'),
+      numHi: document.getElementById('res-num-hi'),
+      // Internal values are d* (1/d Å⁻¹); display is d (Å)
+      toDisplay:   v => v > 0 ? (1 / v).toFixed(2) : '—',
+      fromDisplay: s => {
+        const d = parseFloat(s);
+        return d > 0 ? 1 / d : 0;
+      },
+      // lo thumb = left = low d* = large d = dMax cutoff
+      onLo: v => setDMax(v > 0 ? 1 / v : Infinity),
+      // hi thumb = right = high d* = small d = dMin cutoff
+      onHi: v => setDMin(v > 0 ? 1 / v : 0),
+    });
+  _zSlider = createRangeSlider(
+    document.getElementById('z-range'),
+    {
+      numLo: document.getElementById('z-num-lo'),
+      numHi: document.getElementById('z-num-hi'),
+      toDisplay:   v => String(Math.round(v)),
+      fromDisplay: s => parseFloat(s),
+      onLo: v => setZMin(v),
+      onHi: v => setZMax(v),
+    });
+
+  _pxSlider = createRangeSlider(
+    document.getElementById('px-range'),
+    {
+      numLo: document.getElementById('px-num-lo'),
+      numHi: document.getElementById('px-num-hi'),
+      toDisplay: v => _pxPercentiles
+        ? String(_pxPercentiles[Math.round(
+            Math.max(0, Math.min(
+              _pxPercentiles.length - 1, v)))])
+        : '0',
+      fromDisplay: s => {
+        if (!_pxPercentiles) return 0;
+        const val = parseFloat(s);
+        let best = 0, bestDist = Infinity;
+        for (let i = 0;
+             i < _pxPercentiles.length; i++) {
+          const dist =
+            Math.abs(_pxPercentiles[i] - val);
+          if (dist < bestDist) {
+            bestDist = dist; best = i;
+          }
+        }
+        return best;
+      },
+      onLo: v => {
+        if (_pxPercentiles) {
+          const idx = Math.round(Math.max(0,
+            Math.min(
+              _pxPercentiles.length - 1, v)));
+          setPxMin(_pxPercentiles[idx]);
+        }
+      },
+      onHi: v => {
+        if (_pxPercentiles) {
+          const idx = Math.round(Math.max(0,
+            Math.min(
+              _pxPercentiles.length - 1, v)));
+          setPxMax(_pxPercentiles[idx]);
+        }
+      },
+    });
+
+  function _makeHKLSlider(rangeId, loId, hiId, onLo, onHi) {
+    return createRangeSlider(
+      document.getElementById(rangeId),
+      {
+        numLo: document.getElementById(loId),
+        numHi: document.getElementById(hiId),
+        toDisplay:   v => String(Math.round(v)),
+        fromDisplay: s => {
+          const n = parseInt(s);
+          return isNaN(n) ? 0 : n;
+        },
+        onLo: v => onLo(Math.round(v)),
+        onHi: v => onHi(Math.round(v)),
+      });
+  }
+
+  _hSlider = _makeHKLSlider(
+    'h-range', 'h-num-lo', 'h-num-hi',
+    setHMin, setHMax);
+  _kSlider = _makeHKLSlider(
+    'k-range', 'k-num-lo', 'k-num-hi',
+    setKMin, setKMax);
+  _lSlider = _makeHKLSlider(
+    'l-range', 'l-num-lo', 'l-num-hi',
+    setLMin, setLMax);
 
   // Show group radio buttons
   _wireRadioGroup('show-group', setShowMode);
 
-  // Outlier radio buttons
-  _wireRadioGroup(
-    'show-outliers', v => {
-      setShowInliers(
-        v === 'all' || v === 'inliers');
-      setShowOutliers(
-        v === 'all' || v === 'outliers');
-    });
 
   // Overlay toggles
   _wireOverlayToggle(
@@ -389,6 +474,7 @@ export function buildExpList() {
           updateResolutionRange();
           updateZRange();
           updatePxRange();
+          updateHKLRange();
           buildExpList();
           setInfoLine(
             `${store.datasets.length} dataset(s)`
@@ -502,12 +588,7 @@ export function updateZRange() {
   zLo = Math.floor(zLo);
   zHi = Math.ceil(zHi);
 
-  _setSliderRange(
-    'filt-zmin', 'z-min-num',
-    zLo, zHi, 1, zLo);
-  _setSliderRange(
-    'filt-zmax', 'z-max-num',
-    zLo, zHi, 1, zHi);
+  _zSlider?.setRange(zLo, zHi, zLo, zHi);
 
   store.filters.zMin = zLo;
   store.filters.zMax = zHi;
@@ -560,32 +641,49 @@ export function updatePxRange() {
     _computePercentiles(all, _PX_PCT_POINTS);
 
   const last = _pxPercentiles.length - 1;
-  _setPxSliderRange(
-    'filt-px-min', 'px-min-num', 0);
-  _setPxSliderRange(
-    'filt-px-max', 'px-max-num', last);
+  _pxSlider?.setRange(0, last, 0, last);
 
   store.filters.pxMin = _pxPercentiles[0];
   store.filters.pxMax = _pxPercentiles[last];
 }
 
-// Set slider to index, number to actual value.
-function _setPxSliderRange(
-  sliderId, numId, defaultIdx
-) {
-  const slider =
-    document.getElementById(sliderId);
-  const num =
-    document.getElementById(numId);
-  if (!slider || !num) return;
-  const last = _pxPercentiles.length - 1;
-  slider.min   = 0;
-  slider.max   = last;
-  slider.step  = 1;
-  slider.value = defaultIdx;
-  num.min      = _pxPercentiles[0];
-  num.max      = _pxPercentiles[last];
-  num.value    = _pxPercentiles[defaultIdx];
+// ── Miller index range ────────────────────
+
+/**
+ * Recompute H/K/L extent across all indexed
+ * spots and reset sliders to full range.
+ * Call after every load.
+ */
+export function updateHKLRange() {
+  let hLo =  Infinity, hHi = -Infinity;
+  let kLo =  Infinity, kHi = -Infinity;
+  let lLo =  Infinity, lHi = -Infinity;
+
+  for (const ds of store.datasets) {
+    const d  = ds.rawData.data;
+    const np = d.h.length;
+    for (let i = 0; i < np; i++) {
+      if (!d.indexed_status[i]) continue;
+      if (d.h[i] < hLo) hLo = d.h[i];
+      if (d.h[i] > hHi) hHi = d.h[i];
+      if (d.k[i] < kLo) kLo = d.k[i];
+      if (d.k[i] > kHi) kHi = d.k[i];
+      if (d.l[i] < lLo) lLo = d.l[i];
+      if (d.l[i] > lHi) lHi = d.l[i];
+    }
+  }
+  if (!isFinite(hLo)) return; // no indexed spots
+
+  _hSlider?.setRange(hLo, hHi, hLo, hHi);
+  _kSlider?.setRange(kLo, kHi, kLo, kHi);
+  _lSlider?.setRange(lLo, lHi, lLo, lHi);
+
+  store.filters.hMin = hLo;
+  store.filters.hMax = hHi;
+  store.filters.kMin = kLo;
+  store.filters.kMax = kHi;
+  store.filters.lMin = lLo;
+  store.filters.lMax = lHi;
 }
 
 // ── Resolution range ──────────────────────
@@ -612,47 +710,16 @@ export function updateResolutionRange() {
   // so each step covers equal reciprocal-
   // space distance.  Displayed values are
   // converted back to d (Å) for the user.
-  const dStarLo = 1.0 / dHi; // low-res end
-  const dStarHi = 1.0 / dLo; // high-res end
-  const step = parseFloat(
-    ((dStarHi - dStarLo) / 50)
-      .toPrecision(2));
+  const dStarLo = 1.0 / dHi; // low-res end (left thumb)
+  const dStarHi = 1.0 / dLo; // high-res end (right thumb)
 
-  // dMin slider defaults to dStarHi
-  // (rightmost = dLo Å = all high-res shown).
-  // dMax slider defaults to dStarLo
-  // (leftmost  = dHi Å = all low-res shown).
-  _setDStarSliderRange(
-    'filt-dmin', 'd-min-num',
-    dStarLo, dStarHi, step, dStarHi);
-  _setDStarSliderRange(
-    'filt-dmax', 'd-max-num',
-    dStarLo, dStarHi, step, dStarLo);
+  _resSlider?.setRange(dStarLo, dStarHi, dStarLo, dStarHi);
 
   store.filters.dMin = dLo;
   store.filters.dMax = dHi;
 }
 
 // ── Helpers ───────────────────────────────
-
-// Set slider + number input range and value.
-function _setSliderRange(
-  sliderId, numId,
-  min, max, step, defaultVal
-) {
-  const slider =
-    document.getElementById(sliderId);
-  const num =
-    document.getElementById(numId);
-  if (!slider || !num) return;
-  slider.min   = min;
-  slider.max   = max;
-  slider.step  = step;
-  slider.value = defaultVal;
-  num.min      = min;
-  num.max      = max;
-  num.value    = defaultVal;
-}
 
 // Set slider range in d* space; number
 // input shows the corresponding d value (Å).
@@ -705,51 +772,6 @@ function _syncDStarSlider(
     slider.value = clamped;
     num.value    = (1.0 / clamped).toFixed(2);
     onChangeD(1.0 / clamped);
-  });
-}
-
-// Slider index (0–_PX_STEPS) → percentile
-// lookup.  Number input shows / accepts the
-// actual pixel count; slider snaps to the
-// nearest percentile index.
-function _syncPxSlider(
-  sliderId, numId, onChangePx
-) {
-  const slider =
-    document.getElementById(sliderId);
-  const num =
-    document.getElementById(numId);
-  if (!slider || !num) return;
-
-  slider.addEventListener('input', () => {
-    if (!_pxPercentiles) return;
-    const idx = parseInt(slider.value);
-    const val = _pxPercentiles[idx];
-    num.value = val;
-    onChangePx(val);
-  });
-
-  num.addEventListener('input', () => {
-    const raw = parseFloat(num.value);
-    if (isNaN(raw)) return;
-    if (_pxPercentiles) {
-      // Snap slider to nearest percentile index
-      let best = 0;
-      let bestDist =
-        Math.abs(_pxPercentiles[0] - raw);
-      for (let i = 1;
-           i < _pxPercentiles.length; i++) {
-        const dist =
-          Math.abs(_pxPercentiles[i] - raw);
-        if (dist < bestDist) {
-          bestDist = dist; best = i;
-        }
-      }
-      slider.value = best;
-    }
-    // Pass the typed value directly — not the
-    // snapped one — for precise manual entry.
-    onChangePx(raw);
   });
 }
 
