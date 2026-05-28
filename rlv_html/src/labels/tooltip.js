@@ -12,6 +12,8 @@ import {
 } from '../scene/renderer.js';
 import { checkOverlayHover }
   from '../scene/overlays.js';
+import { expColor }
+  from '../filters/colors.js';
 
 const RADIUS_PX = 5;
 
@@ -198,15 +200,25 @@ function _buildInfo(ds, i, gIdx) {
       ? `(${d.h[i]} ${d.k[i]} ${d.l[i]})`
       : `spot ${gIdx}`;
 
-  return { hkl, rows };
+  const expId  = d.id?.[i];
+  const key    = `${ds.id}:${expId}`;
+  const colorId =
+    (ds.colorOffset ?? 0)
+    + (expId - (ds.expOffset ?? 0));
+  const color =
+    store.expColorOverrides[key]
+    ?? expColor(colorId);
+
+  return { hkl, rows, color };
 }
 
 // ── Render tooltip ────────────────────────
 
 function _showOverlay(overlay, cx, cy) {
   if (!_el) return;
-  document.getElementById('tt-hkl')
-    .textContent = overlay.title;
+  const titleEl = document.getElementById('tt-hkl');
+  titleEl.textContent = overlay.title;
+  titleEl.style.color = '';
   document.getElementById('tt-table')
     .innerHTML = overlay.rows.map(
       ([k, v]) =>
@@ -269,8 +281,9 @@ function _positionEl(clientX, clientY) {
 
 function _show(info, cx, cy) {
   if (!_el) return;
-  document.getElementById('tt-hkl')
-    .textContent = info.hkl;
+  const titleEl = document.getElementById('tt-hkl');
+  titleEl.textContent = info.hkl;
+  titleEl.style.color = info.color ?? '';
   document.getElementById('tt-table')
     .innerHTML = info.rows.map(
       ([k, v]) =>

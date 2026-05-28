@@ -8,7 +8,7 @@
  *   - Filter slider/number pairs
  */
 
-import { store, setExpColor, setActiveExp, setOverlay, removeDataset, totalSpots, onChange }
+import { store, setExpColor, setExpOpacity, setActiveExp, setOverlay, removeDataset, totalSpots, onChange }
   from '../state/store.js';
 import { showColorPicker }
   from './colorPicker.js';
@@ -20,7 +20,6 @@ import {
   setDMin, setDMax,
   setZMin, setZMax,
   setPxMin, setPxMax,
-  setPartMin, setPartMax,
   setShowMode,
   setShowInliers, setShowOutliers,
   setExpVisible,
@@ -44,8 +43,11 @@ import {
   setInspectionD,
   setInspectionSphereVisible,
 } from '../scene/resolutionSpheres.js';
-import { recomputeExpPoints }
-  from '../io/rlv_io.js';
+import {
+  recomputeExpPoints,
+  hasCrystal,
+  transformExpOverlayVectors,
+} from '../io/rlv_io.js';
 
 // ── Collapsible sections ──────────────────
 
@@ -107,12 +109,6 @@ export function initFilterPanel() {
     'filt-px-min', 'px-min-num', setPxMin);
   _syncPxSlider(
     'filt-px-max', 'px-max-num', setPxMax);
-  _syncSlider(
-    'filt-part-min',
-    'part-min-num', setPartMin);
-  _syncSlider(
-    'filt-part-max',
-    'part-max-num', setPartMax);
 
   // Show group radio buttons
   _wireRadioGroup('show-group', setShowMode);
@@ -134,9 +130,19 @@ export function initFilterPanel() {
   _wireOverlayToggle(
     'tog-beam',   'beam');
   _wireOverlayToggle(
-    'tog-crystal-frame', 'crystalFrame');
-  _wireOverlayToggle(
     'tog-exp-info', 'expInfo');
+
+  // Crystal frame toggle (global recompute)
+  const togCF = document.getElementById(
+    'tog-crystal-frame');
+  if (togCF) {
+    togCF.addEventListener('click', () => {
+      const on =
+        togCF.classList.contains('on');
+      store.overlays.crystalFrame = on;
+      _applyCrystalFrame(on);
+    });
+  }
 
   // Spot tooltips toggle
   const togTT =
@@ -244,6 +250,19 @@ export function updateInspectionRange(dLo) {
 
 // ── Experiment list ───────────────────────
 
+// Returns the CSS `background` value for a
+// color circle: solid when opacity=1, split
+// left=solid / right=transparent otherwise.
+function _circleStyle(hex, opacity) {
+  if (opacity >= 1.0) return hex;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `linear-gradient(to right,`
+    + `${hex} 50%,`
+    + `rgba(${r},${g},${b},${opacity}) 50%)`;
+}
+
 // Build "directory/filename.expt" tooltip text
 // from the imageset template embedded in the .expt
 // JSON. Template e.g. /path/to/dataset/frames/img.cbf
@@ -301,6 +320,8 @@ export function buildExpList() {
       const color =
         store.expColorOverrides[labelKey]
         ?? expColor(colorId);
+      const expOpacity =
+        store.expOpacityOverrides[labelKey] ?? 1.0;
       const active = store.activeExp;
       const checked =
         active &&
@@ -317,6 +338,12 @@ export function buildExpList() {
         `Path: ${fullPath}`
         + (lbl ? `\nLabel: ${lbl}` : '');
 
+      const frozen =
+        store.frozenExpts.has(labelKey);
+      const togOn =
+        store.filters.visibleExpts
+          .has(labelKey);
+
       row.innerHTML = `
         <button class="exp-remove"
           title="Remove dataset">×</button>
@@ -325,7 +352,7 @@ export function buildExpList() {
           name="active-exp"
           ${checked ? 'checked' : ''}>
         <div class="exp-color-circle"
-          style="background:${color}">
+          style="background:${_circleStyle(color, expOpacity)}">
         </div>
         <span class="exp-label"
           title="${makeTooltip(savedLabel)
@@ -340,7 +367,8 @@ export function buildExpList() {
         <span class="exp-count">
           ${count.toLocaleString()}
         </span>
-        <div class="toggle on"
+        <div class="toggle ${togOn ? 'on' : ''}
+          ${frozen ? 'frozen' : ''}"
           data-dsid="${ds.id}"
           data-expid="${expId}">
         </div>`;
@@ -392,6 +420,9 @@ export function buildExpList() {
 
       row.querySelector('.toggle')
         .addEventListener('click', tog => {
+          if (tog.currentTarget
+              .classList.contains('frozen'))
+            return;
           tog.currentTarget
             .classList.toggle('on');
           const on = tog.currentTarget
@@ -406,12 +437,18 @@ export function buildExpList() {
         const currentHex =
           store.expColorOverrides[labelKey]
           ?? color;
+        const currentOpacity =
+          store.expOpacityOverrides[labelKey]
+          ?? 1.0;
         showColorPicker(
-          circleEl, currentHex,
-          hex => {
+          circleEl, currentHex, currentOpacity,
+          (hex, opacity) => {
             setExpColor(ds.id, expId, hex);
-            circleEl.style.background = hex;
+            setExpOpacity(ds.id, expId, opacity);
+            circleEl.style.background =
+              _circleStyle(hex, opacity);
             recolour();
+            applyFilters();
           });
       });
     }
@@ -773,4 +810,44 @@ function _wireOverlayToggle(
 
 function _getPoints() {
   return getPointsObject();
+}
+
+// ── Crystal frame ─────────────────────────
+
+function _applyCrystalFrame(on) {
+  store.frozenExpts.clear();
+
+  for (const ds of store.datasets) {
+    const nExp =
+      ds.exptParser.numExperiments();
+    for (let li = 0; li < nExp; li++) {
+      const globalExpId = ds.expOffset + li;
+      const key = `${ds.id}:${globalExpId}`;
+      const inv =
+        store.invertedExpts.has(key);
+
+      if (on && !hasCrystal(ds, li)) {
+        // Freeze no-crystal experiments
+        store.frozenExpts.add(key);
+      } else {
+        recomputeExpPoints(
+          ds, li, inv, on);
+        // Apply same crystal.U to all overlay
+        // vectors (beam, rot axis, cell arrows)
+        // so they land in the same frame as spots.
+        transformExpOverlayVectors(
+          ds, li, on);
+      }
+    }
+  }
+
+  const pts = buildPointCloud();
+  setPointsObject(pts);
+  recolour();
+  applyFilters();
+  buildExpList();
+  // Emit overlays-changed so _refreshAll()
+  // in overlays.js redraws arrows from the
+  // now-transformed expData vectors.
+  setOverlay('crystalFrame', on);
 }

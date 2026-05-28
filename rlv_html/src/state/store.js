@@ -35,9 +35,20 @@ export const store = {
   // value: '#rrggbb'
   expColorOverrides: {},
 
+  // ── Per-experiment opacity overrides ─
+  // key: `${datasetId}:${expId}`
+  // value: 0.0–1.0 (default 1.0)
+  expOpacityOverrides: {},
+
   // ── Per-experiment inverted rot axis ─
   // key: `${datasetId}:${expId}`
   invertedExpts: new Set(),
+
+  // ── Frozen by crystal-frame mode ─────
+  // No-crystal experiments hidden while
+  // crystalFrame overlay is active.
+  // key: `${datasetId}:${expId}`
+  frozenExpts: new Set(),
 
   // ── Per-experiment user labels ───────
   // key: `${datasetId}:${expId}`
@@ -52,8 +63,6 @@ export const store = {
     zMax:           Infinity,
     pxMin:          0,
     pxMax:          Infinity,
-    partMin:        0,
-    partMax:        1.0,
     // 'all' | 'indexed' | 'unindexed' | 'integrated'
     showMode:       'all',
     showInliers:    true,
@@ -79,13 +88,14 @@ export const store = {
 
   // ── Overlays visibility ───────────────
   overlays: {
-    detector:  false,
-    ewald:     false,
-    unitcell:  true,
-    beam:      true,
-    rotAxis:   true,
-    scanAnim:  false,
-    expInfo:   true,
+    detector:     false,
+    ewald:        false,
+    unitcell:     true,
+    beam:         true,
+    rotAxis:      true,
+    scanAnim:     false,
+    expInfo:      true,
+    crystalFrame: false,
   },
 
   // ── Scan / Ewald animation ────────────
@@ -149,9 +159,10 @@ export function removeDataset(id) {
   store.datasets =
     store.datasets.filter(d => d.id !== id);
 
-  // Clean up colour overrides and labels
+  // Clean up colour/opacity overrides and labels
   for (const obj of [
     store.expColorOverrides,
+    store.expOpacityOverrides,
     store.expLabels,
   ]) {
     Object.keys(obj)
@@ -159,10 +170,11 @@ export function removeDataset(id) {
       .forEach(k => delete obj[k]);
   }
 
-  // Clean up visible expts and inverted expts
+  // Clean up visible expts and inverted/frozen expts
   for (const set of [
     store.filters.visibleExpts,
     store.invertedExpts,
+    store.frozenExpts,
   ]) {
     for (const key of set) {
       if (key.startsWith(`${id}:`))
@@ -181,8 +193,10 @@ export function clearDatasets() {
   store._nextDatasetId = 0;
   store._nextColorIndex = 0;
   store.expColorOverrides = {};
+  store.expOpacityOverrides = {};
   store.filters.visibleExpts.clear();
   store.invertedExpts.clear();
+  store.frozenExpts.clear();
   store.visibleSet = null;
   store.selectionSet.clear();
   store.activeExp = null;
@@ -256,6 +270,20 @@ export function getExpColor(
   const key = `${datasetId}:${expId}`;
   return store.expColorOverrides[key]
     ?? fallback;
+}
+
+export function setExpOpacity(
+  datasetId, expId, opacity
+) {
+  const key = `${datasetId}:${expId}`;
+  store.expOpacityOverrides[key] = opacity;
+}
+
+export function getExpOpacity(
+  datasetId, expId
+) {
+  const key = `${datasetId}:${expId}`;
+  return store.expOpacityOverrides[key] ?? 1.0;
 }
 
 // ── Event bus ─────────────────────────────

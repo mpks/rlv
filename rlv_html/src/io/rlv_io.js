@@ -289,14 +289,64 @@ function getS1(
 // ── Per-experiment recompute ──────────────
 
 /**
+ * Linearly interpolate a scan-varying U matrix
+ * at scan angle phi (radians).
+ *
+ * atsps: array of N 9-element row-major arrays
+ *        (DIALS JSON: A_at_scan_points format)
+ * Uses the same U_js = B⁻¹ · A(φ)ᵀ formula
+ * as getCrystal() for consistency.
+ */
+function _interpolateU(atsps, N, Binv, phi, scan) {
+  const phiStart   = scan.oscillation.x;
+  const dphi       = scan.oscillation.y;
+  const nImages    =
+    scan.imageRange.y - scan.imageRange.x + 1;
+  const totalRange = dphi * nImages;
+
+  const t = totalRange > 0
+    ? (phi - phiStart) / totalRange * (N - 1)
+    : 0;
+  const i0   = Math.max(0,
+    Math.min(N - 2, Math.floor(t)));
+  const frac = Math.max(0,
+    Math.min(1, t - i0));
+
+  // atsps is a list of N 9-element arrays
+  const a0 = atsps[i0];
+  const a1 = atsps[i0 + 1];
+  const A  = new Array(9);
+  for (let j = 0; j < 9; j++)
+    A[j] = a0[j] * (1 - frac)
+         + a1[j] * frac;
+
+  // A stored row-major (Python) → U_js = Binv · Aᵀ
+  const Amat = new THREE.Matrix3(
+    A[0], A[1], A[2],
+    A[3], A[4], A[5],
+    A[6], A[7], A[8]
+  ).transpose();
+
+  const U = new THREE.Matrix3();
+  U.multiplyMatrices(Binv, Amat);
+  return U;
+}
+
+/**
  * Recompute RLP positions for all spots
  * belonging to localExpId (0-based within
  * this dataset) and update rawData in place.
  * Pass invertAxis=true to negate the
  * goniometer rotation axis.
+ *
+ * When crystalFrame=true and the crystal has
+ * A_at_scan_points, a per-spot U(φ) is
+ * interpolated; otherwise the static crystal.U
+ * is used for all spots.
  */
 export function recomputeExpPoints(
-  ds, localExpId, invertAxis
+  ds, localExpId, invertAxis,
+  crystalFrame = false
 ) {
   const { exptParser, reflParser,
           rawData } = ds;
@@ -338,6 +388,36 @@ export function recomputeExpPoints(
   const scan =
     exptParser.getScan(localExpId);
 
+  // ── Crystal frame: precompute once ───────
+  // For scan-varying models (A_at_scan_points
+  // present), store B⁻¹ and the point array so
+  // each spot can get its own U(φ).
+  // For static models, _staticU is used for all.
+  let _staticU = null;
+  let _Binv    = null;
+  let _atsps   = null;
+  let _Nsp     = 0;
+
+  if (crystalFrame) {
+    const crystal =
+      exptParser.getCrystal(localExpId);
+    if (crystal) {
+      _staticU = crystal.U;
+      // A_at_scan_points: array of N 9-element
+      // row-major arrays (one per scan point)
+      const ats =
+        exptParser.getCrystalData(localExpId)
+          ?.A_at_scan_points;
+      if (Array.isArray(ats)
+          && ats.length >= 2
+          && Array.isArray(ats[0])) {
+        _Nsp   = ats.length;
+        _atsps = ats;
+        _Binv  = crystal.B.clone().invert();
+      }
+    }
+  }
+
   for (let i = 0; i < n; i++) {
     const exptID = exptIDs ? exptIDs[i] : 0;
     if (exptID !== localExpId) continue;
@@ -374,8 +454,10 @@ export function recomputeExpPoints(
       .sub(unitS0.clone().normalize())
       .multiplyScalar(1.0 / wavelength);
 
+    let spotAngle = 0;
     if (gonio && scan && xyzObsMm) {
       const angle  = xyzObsMm[i][2];
+      spotAngle = angle;
       const sr = gonio.settingRotation;
       const fr = gonio.fixedRotation;
       const ra = gonio.rotationAxis.clone();
@@ -386,6 +468,18 @@ export function recomputeExpPoints(
         fr.clone().invert().transpose());
     }
 
+    // Crystal frame: use scan-varying U(φ)
+    // when A_at_scan_points is available,
+    // otherwise fall back to static U.
+    if (_staticU) {
+      const U = (_Binv && _Nsp >= 2 && scan)
+        ? _interpolateU(
+            _atsps, _Nsp, _Binv,
+            spotAngle, scan)
+        : _staticU;
+      rlp.applyMatrix3(U);
+    }
+
     rlp.multiplyScalar(SCALE);
 
     rawData.points[i] = [rlp.x, rlp.y, rlp.z];
@@ -393,6 +487,102 @@ export function recomputeExpPoints(
     const dstar = rlp.length() / SCALE;
     rawData.data.d_spacing[i] =
       dstar > 1e-6 ? 1.0 / dstar : 0;
+  }
+}
+
+/**
+ * True if experiment localExpId (0-based
+ * within dataset) has a crystal model.
+ */
+export function hasCrystal(ds, localExpId) {
+  return !!ds.exptParser.getCrystal(localExpId);
+}
+
+/**
+ * Return the B-matrix reciprocal-cell vectors
+ * (a*, b*, c* in crystal reference frame)
+ * scaled to scene units, or null if no crystal.
+ */
+export function crystalFrameVectors(
+  ds, localExpId
+) {
+  const crystal =
+    ds.exptParser.getCrystal(localExpId);
+  if (!crystal) return null;
+  const e = crystal.B.elements;
+  return [
+    [e[0]*SCALE, e[1]*SCALE, e[2]*SCALE],
+    [e[3]*SCALE, e[4]*SCALE, e[5]*SCALE],
+    [e[6]*SCALE, e[7]*SCALE, e[8]*SCALE],
+  ];
+}
+
+/**
+ * Transform (or restore) all overlay vectors
+ * stored in rawData.experiments[localExpId]:
+ *   beam_vector, rotation_axis, recip_latt_vectors.
+ *
+ * on=true  → apply the same crystal.U that is
+ *            applied to spots, so all vectors
+ *            end up in the same crystal frame.
+ * on=false → restore lab-frame values from
+ *            the parsers.
+ */
+export function transformExpOverlayVectors(
+  ds, localExpId, on
+) {
+  const expData =
+    ds.rawData.experiments?.[localExpId];
+  if (!expData) return;
+
+  if (on) {
+    const crystal =
+      ds.exptParser.getCrystal(localExpId);
+    if (!crystal) return;
+
+    if (expData.beam_vector) {
+      const v = new THREE.Vector3(
+        ...expData.beam_vector)
+        .applyMatrix3(crystal.U);
+      expData.beam_vector = [v.x, v.y, v.z];
+    }
+    if (expData.rotation_axis) {
+      const v = new THREE.Vector3(
+        ...expData.rotation_axis)
+        .applyMatrix3(crystal.U);
+      expData.rotation_axis = [v.x, v.y, v.z];
+    }
+    if (expData.recip_latt_vectors) {
+      expData.recip_latt_vectors =
+        expData.recip_latt_vectors.map(rv => {
+          const v = new THREE.Vector3(...rv)
+            .applyMatrix3(crystal.U);
+          return [v.x, v.y, v.z];
+        });
+    }
+  } else {
+    // Restore from parsers
+    const bd =
+      ds.exptParser.getBeamDirection(localExpId);
+    if (bd)
+      expData.beam_vector = [bd.x, bd.y, bd.z];
+
+    const gonio =
+      ds.exptParser.getGoniometer(localExpId);
+    if (gonio?.rotationAxis) {
+      const ra = gonio.rotationAxis;
+      expData.rotation_axis = [ra.x, ra.y, ra.z];
+    }
+
+    const crystal =
+      ds.exptParser.getCrystal(localExpId);
+    if (crystal) {
+      expData.recip_latt_vectors =
+        crystal.reciprocalCell.map(
+          v => [v.x * SCALE,
+                v.y * SCALE,
+                v.z * SCALE]);
+    }
   }
 }
 

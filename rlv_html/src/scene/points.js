@@ -7,7 +7,7 @@
  * The geometry has three buffer attributes:
  *   position  — xyz in scene units
  *   color     — rgb (0..1)
- *   alpha     — per-spot visibility (0 or 1)
+ *   alpha     — per-spot opacity (0=hidden, >0=opacity)
  *
  * Only alpha and color are updated at
  * runtime; position never changes after
@@ -37,12 +37,11 @@ const VERT = `
 const FRAG = `
   varying vec3  vColor;
   varying float vAlpha;
-  uniform float opacity;
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     if (dot(uv, uv) > 0.25) discard;
-    if (vAlpha < 0.5) discard;
-    gl_FragColor = vec4(vColor, opacity);
+    if (vAlpha < 0.001) discard;
+    gl_FragColor = vec4(vColor, vAlpha);
   }
 `;
 
@@ -53,8 +52,7 @@ const FRAG = `
  * scene via renderer.setPointsObject).
  */
 export function buildPointCloud(
-  pointSize = 5.0,
-  opacity   = 0.9
+  pointSize = 5.0
 ) {
   // Merge all datasets
   const allPts  = [];
@@ -98,7 +96,6 @@ export function buildPointCloud(
     depthWrite:   false,
     uniforms: {
       pointSize: { value: pointSize },
-      opacity:   { value: opacity   },
     },
     vertexShader:   VERT,
     fragmentShader: FRAG,
@@ -120,9 +117,19 @@ export function applyVisibility(
   if (!pointsObj || !visibleSet) return;
   const attr = pointsObj.geometry
     .attributes.alpha;
-  for (let i = 0;
-       i < visibleSet.length; i++) {
-    attr.array[i] = visibleSet[i];
+  let g = 0;
+  for (const ds of store.datasets) {
+    const ids = ds.rawData.data.id;
+    for (let i = 0; i < ids.length; i++) {
+      if (visibleSet[g]) {
+        const key = `${ds.id}:${ids[i]}`;
+        attr.array[g] =
+          store.expOpacityOverrides[key] ?? 1.0;
+      } else {
+        attr.array[g] = 0.0;
+      }
+      g++;
+    }
   }
   attr.needsUpdate = true;
 }
@@ -205,10 +212,4 @@ export function setPointSize(obj, size) {
   if (!obj) return;
   obj.material.uniforms.pointSize
     .value = size;
-}
-
-export function setOpacity(obj, val) {
-  if (!obj) return;
-  obj.material.uniforms.opacity
-    .value = val;
 }

@@ -53,6 +53,13 @@ export function applyFilters() {
         continue;
       }
 
+      // Frozen by crystal-frame mode
+      if (store.overlays.crystalFrame
+          && store.frozenExpts.has(expKey)) {
+        globalIdx++;
+        continue;
+      }
+
       // Spot category filter
       const integr  = d.integrated_status[i];
       const indexed = d.indexed_status[i];
@@ -104,14 +111,6 @@ export function applyFilters() {
         }
       }
 
-      // Partiality
-      if (d.partiality) {
-        const p = d.partiality[i];
-        if (p < f.partMin
-            || p > f.partMax) {
-          globalIdx++; continue;
-        }
-      }
 
       vis[globalIdx] = 1;
       visible++;
@@ -169,16 +168,6 @@ export function setPxMax(v) {
   const p = parseFloat(v);
   store.filters.pxMax =
     isNaN(p) ? Infinity : p;
-  applyFilters();
-}
-export function setPartMin(v) {
-  const p = parseFloat(v);
-  store.filters.partMin = isNaN(p) ? 0 : p;
-  applyFilters();
-}
-export function setPartMax(v) {
-  const p = parseFloat(v);
-  store.filters.partMax = isNaN(p) ? 1 : p;
   applyFilters();
 }
 export function setShowMode(mode) {

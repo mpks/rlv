@@ -1,28 +1,30 @@
 /**
  * ui/colorPicker.js
  *
- * Floating HSV colour-picker popup.
+ * Floating HSV colour-picker popup with
+ * per-experiment opacity control.
  *
  * Usage:
- *   showColorPicker(anchorEl, '#rrggbb',
- *     hex => { /* called on every change *‌/ });
+ *   showColorPicker(anchorEl, '#rrggbb', opacity,
+ *     (hex, opacity) => { /* called on every change *‌/ });
  *
+ * opacity: 0.0–1.0
  * Closes on outside click or Escape.
  * Clicking the same anchor again toggles it.
  */
 
-const W     = 200;  // shared width
-const SV_H  = 150;  // saturation-value square height
-const HUE_H = 14;   // hue rail height
+const W        = 200;
+const SV_H     = 150;
+const HUE_H    = 14;
+const OPACITY_H = 14;
 
 let _popup   = null;
 let _anchor  = null;
 let _cleanup = null;
 
 export function showColorPicker(
-  anchorEl, initialHex, onChange
+  anchorEl, initialHex, initialOpacity, onChange
 ) {
-  // Toggle off if same circle clicked again
   if (_popup && _anchor === anchorEl) {
     _destroy(); return;
   }
@@ -30,6 +32,9 @@ export function showColorPicker(
   _anchor = anchorEl;
 
   let [h, s, v] = _hexToHsv(initialHex);
+  let alpha = typeof initialOpacity === 'number'
+    ? Math.max(0, Math.min(1, initialOpacity))
+    : 1.0;
 
   _popup = document.createElement('div');
   _popup.className = 'cp-popup';
@@ -44,15 +49,21 @@ export function showColorPicker(
         width="${W}" height="${HUE_H}"></canvas>
       <div class="cp-hue-thumb"></div>
     </div>
+    <div class="cp-opacity-wrap">
+      <canvas class="cp-opacity"
+        width="${W}" height="${OPACITY_H}"></canvas>
+      <div class="cp-opacity-thumb"></div>
+    </div>
     <div class="cp-bottom">
       <div class="cp-swatch"></div>
       <input class="cp-hex" type="text"
         maxlength="7" spellcheck="false">
+      <input class="cp-opacity-num" type="number"
+        min="0" max="100" step="1" title="Opacity %">
     </div>`;
 
   document.body.appendChild(_popup);
 
-  // Position near the anchor, clamped to viewport
   const ar = anchorEl.getBoundingClientRect();
   const pr = _popup.getBoundingClientRect();
   let left = ar.right + 10;
@@ -65,19 +76,49 @@ export function showColorPicker(
   _popup.style.left = `${left}px`;
   _popup.style.top  = `${top}px`;
 
-  const svEl     = _popup.querySelector('.cp-sv');
-  const cursor   = _popup.querySelector('.cp-cursor');
-  const hueEl    = _popup.querySelector('.cp-hue');
-  const hueThumb = _popup.querySelector('.cp-hue-thumb');
-  const swatch   = _popup.querySelector('.cp-swatch');
-  const hexIn    = _popup.querySelector('.cp-hex');
+  const svEl        = _popup.querySelector('.cp-sv');
+  const cursor      = _popup.querySelector('.cp-cursor');
+  const hueEl       = _popup.querySelector('.cp-hue');
+  const hueThumb    = _popup.querySelector('.cp-hue-thumb');
+  const opacityEl   = _popup.querySelector('.cp-opacity');
+  const opacThumb   = _popup.querySelector('.cp-opacity-thumb');
+  const swatch      = _popup.querySelector('.cp-swatch');
+  const hexIn       = _popup.querySelector('.cp-hex');
+  const opacNumIn   = _popup.querySelector('.cp-opacity-num');
 
-  let drag = null; // 'sv' | 'hue'
+  let drag = null; // 'sv' | 'hue' | 'opacity'
 
   // ── Draw ──────────────────────────────
 
+  function renderOpacity() {
+    const oc = opacityEl.getContext('2d');
+    // Checkerboard background
+    const tile = 4;
+    for (let x = 0; x < W; x += tile) {
+      for (let y = 0; y < OPACITY_H; y += tile) {
+        oc.fillStyle =
+          Math.floor(x / tile + y / tile) % 2 === 0
+            ? '#888' : '#bbb';
+        oc.fillRect(x, y, tile, tile);
+      }
+    }
+    // Gradient from transparent to full color
+    const hex = _hsvToHex(h, s, v);
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const og = oc.createLinearGradient(0, 0, W, 0);
+    og.addColorStop(0, `rgba(${r},${g},${b},0)`);
+    og.addColorStop(1, `rgba(${r},${g},${b},1)`);
+    oc.fillStyle = og;
+    oc.fillRect(0, 0, W, OPACITY_H);
+
+    opacThumb.style.left = `${alpha * W}px`;
+    if (document.activeElement !== opacNumIn)
+      opacNumIn.value = Math.round(alpha * 100);
+  }
+
   function render() {
-    // Saturation-value square
     const sc = svEl.getContext('2d');
     const hg = sc.createLinearGradient(0, 0, W, 0);
     hg.addColorStop(0, '#fff');
@@ -90,7 +131,6 @@ export function showColorPicker(
     sc.fillStyle = vg;
     sc.fillRect(0, 0, W, SV_H);
 
-    // Hue rail
     const hc = hueEl.getContext('2d');
     const rg = hc.createLinearGradient(0, 0, W, 0);
     for (let i = 0; i <= 6; i++)
@@ -99,7 +139,6 @@ export function showColorPicker(
     hc.fillStyle = rg;
     hc.fillRect(0, 0, W, HUE_H);
 
-    // Cursor & thumb
     cursor.style.left   = `${s * W}px`;
     cursor.style.top    = `${(1 - v) * SV_H}px`;
     hueThumb.style.left = `${(h / 360) * W}px`;
@@ -108,10 +147,12 @@ export function showColorPicker(
     swatch.style.background = hex;
     if (document.activeElement !== hexIn)
       hexIn.value = hex;
+
+    renderOpacity();
   }
 
   function emit() {
-    onChange(_hsvToHex(h, s, v));
+    onChange(_hsvToHex(h, s, v), alpha);
   }
 
   // ── Interactions ──────────────────────
@@ -132,16 +173,27 @@ export function showColorPicker(
     render(); emit();
   }
 
+  function pickOpacity(e) {
+    const r = opacityEl.getBoundingClientRect();
+    alpha = Math.max(0, Math.min(1,
+      (e.clientX - r.left) / W));
+    renderOpacity(); emit();
+  }
+
   svEl.addEventListener('mousedown', e => {
     drag = 'sv'; pickSV(e); e.preventDefault();
   });
   hueEl.addEventListener('mousedown', e => {
     drag = 'hue'; pickHue(e); e.preventDefault();
   });
+  opacityEl.addEventListener('mousedown', e => {
+    drag = 'opacity'; pickOpacity(e); e.preventDefault();
+  });
 
   function onMove(e) {
-    if (drag === 'sv')  pickSV(e);
-    if (drag === 'hue') pickHue(e);
+    if (drag === 'sv')      pickSV(e);
+    if (drag === 'hue')     pickHue(e);
+    if (drag === 'opacity') pickOpacity(e);
   }
   function onUp() { drag = null; }
 
@@ -157,6 +209,17 @@ export function showColorPicker(
     e.stopPropagation();
   });
 
+  opacNumIn.addEventListener('change', () => {
+    const pct = parseFloat(opacNumIn.value);
+    if (isNaN(pct)) return;
+    alpha = Math.max(0, Math.min(1, pct / 100));
+    renderOpacity(); emit();
+  });
+  opacNumIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter') opacNumIn.blur();
+    e.stopPropagation();
+  });
+
   function onOutside(e) {
     if (!_popup.contains(e.target)
         && e.target !== anchorEl)
@@ -168,7 +231,6 @@ export function showColorPicker(
 
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup',   onUp);
-  // Defer so the current click doesn't immediately close
   setTimeout(() => {
     document.addEventListener('mousedown', onOutside);
     document.addEventListener('keydown',   onKey);

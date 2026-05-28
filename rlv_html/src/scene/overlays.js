@@ -17,6 +17,7 @@ import {
 import { store, onChange }
   from '../state/store.js';
 import { SCALE } from '../io/rlv_io.js';
+import { expColor } from '../filters/colors.js';
 
 // How much to scale recip-cell vector lengths
 // beyond their natural reciprocal-space size.
@@ -345,6 +346,17 @@ export function checkOverlayHover(cx, cy, rect) {
 
 // ── Experiment info panel ─────────────────
 
+function _datasetPath(ds) {
+  try {
+    const t = ds.exptParser.getImageFilenames(0);
+    if (!t) return ds.label;
+    const sep = t.includes('/') ? '/' : '\\';
+    const dir = t.substring(0, t.lastIndexOf(sep));
+    return dir ? `${dir}${sep}${ds.label}` : ds.label;
+  } catch {}
+  return ds.label;
+}
+
 let _normEl = null;
 
 function _initNormPanel() {
@@ -354,7 +366,7 @@ function _initNormPanel() {
   _normEl = document.createElement('div');
   Object.assign(_normEl.style, {
     position:      'absolute',
-    bottom:        '28px',
+    bottom:        '4px',
     left:          '10px',
     pointerEvents: 'none',
     lineHeight:    '1.6',
@@ -385,6 +397,19 @@ function _refreshNormPanel() {
   const dim = `${m};color:#888`;
   const val = `${m};color:#ccc`;
   const rows = [];
+
+  // Experiment ID (first line, colored by spot color)
+  if (ds) {
+    const localExpId = expId - (ds.expOffset ?? 0);
+    const key = `${ds.id}:${expId}`;
+    const colorId = (ds.colorOffset ?? 0) + localExpId;
+    const color = store.expColorOverrides[key]
+      ?? expColor(colorId);
+    rows.push(
+      `<span style="font-size:13px;font-family:monospace;font-weight:bold;color:${color}">`
+      + `Exp ${ds.id}:${localExpId}</span>`
+    );
+  }
 
   // Cell axes + angles
   const cn = expt.cell_norms;
@@ -478,6 +503,18 @@ function _refreshNormPanel() {
     }
   }
 
+  // File path (last line, absolute, same color as exp ID)
+  if (ds) {
+    const localExpId = expId - (ds.expOffset ?? 0);
+    const key = `${ds.id}:${expId}`;
+    const colorId = (ds.colorOffset ?? 0) + localExpId;
+    const color = store.expColorOverrides[key]
+      ?? expColor(colorId);
+    rows.push(
+      `<span style="${m};color:${color}">${_datasetPath(ds)}</span>`
+    );
+  }
+
   if (!rows.length) {
     _normEl.style.display = 'none';
     return;
@@ -517,4 +554,5 @@ export function initOverlays() {
   onChange('overlays-changed',   _refreshAll);
   onChange('active-exp-changed', _refreshAll);
   onChange('datasets-changed',   _refreshAll);
+  onChange('colors-changed',     _refreshNormPanel);
 }
