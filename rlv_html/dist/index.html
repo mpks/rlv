@@ -4282,6 +4282,39 @@ void main() {
     <div class="section-content"
          id="section-filter">
 
+      <div class="category-counts"
+           style="padding:4px 12px 2px">
+        Show spots:
+      </div>
+      <div class="row">
+        <div class="radio-group">
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="all" checked>
+            <span>All</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="indexed">
+            <span>Indexed</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="unindexed">
+            <span>Unindexed</span>
+          </label>
+          <label class="radio-btn">
+            <input type="radio"
+                   name="show-group"
+                   value="integrated">
+            <span>Integrated</span>
+          </label>
+        </div>
+      </div>
+
       <div class="row res-row">
         <label>Resolution (Å)</label>
         <div class="res-filter-right">
@@ -4393,16 +4426,6 @@ void main() {
              id="tog-beam"></div>
       </div>
       <div class="row">
-        <label>Invert rotation axis</label>
-        <div class="toggle"
-             id="tog-inv-rot-axis"></div>
-      </div>
-      <div class="row">
-        <label>Show in crystal frame</label>
-        <div class="toggle"
-             id="tog-crystal-frame"></div>
-      </div>
-      <div class="row">
         <label>Experiment info</label>
         <div class="toggle on"
              id="tog-exp-info"></div>
@@ -4447,14 +4470,20 @@ void main() {
 
     </div><!-- /section-annotations -->
 
-    <!-- Display -->
+    <!-- View -->
     <div class="section-label"
          data-section="display">
-      Display
+      View
       <span class="section-toggle">▼</span>
     </div>
     <div class="section-content"
          id="section-display">
+
+      <div class="row">
+        <label>Show in crystal frame</label>
+        <div class="toggle"
+             id="tog-crystal-frame"></div>
+      </div>
 
       <div class="row">
         <label>Show tooltips</label>
@@ -4462,42 +4491,8 @@ void main() {
              id="tog-tooltips"></div>
       </div>
 
-      <div class="category-counts"
-           style="padding:4px 12px 2px">
-        Show spots:
-      </div>
       <div class="row">
-        <div class="radio-group">
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-group"
-                   value="all" checked>
-            <span>All</span>
-          </label>
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-group"
-                   value="indexed">
-            <span>Indexed</span>
-          </label>
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-group"
-                   value="unindexed">
-            <span>Unindexed</span>
-          </label>
-          <label class="radio-btn">
-            <input type="radio"
-                   name="show-group"
-                   value="integrated">
-            <span>Integrated</span>
-          </label>
-        </div>
-      </div>
-
-
-      <div class="row">
-        <label>Point size</label>
+        <label>Spot size</label>
         <input type="range"
                id="filt-point-size"
                min="1" max="20"
@@ -4508,7 +4503,7 @@ void main() {
                step="0.5" value="5">
       </div>
 
-    </div><!-- /section-display -->
+    </div><!-- /section-view -->
 
     <!-- Tools -->
     <div class="section-label"
@@ -4519,6 +4514,11 @@ void main() {
     <div class="section-content"
          id="section-tools">
 
+      <div class="row">
+        <label>Invert rotation axis</label>
+        <div class="toggle"
+             id="tog-inv-rot-axis"></div>
+      </div>
       <div class="row">
         <label>Inspection sphere</label>
         <div class="toggle"
