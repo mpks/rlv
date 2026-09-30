@@ -393,59 +393,49 @@ function _refreshNormPanel() {
   const ds = store.datasets
     .find(d => d.id === datasetId);
 
-  const m = 'font-size:11px;font-family:monospace';
+  const m   = 'font-size:11px;font-family:monospace';
   const dim = `${m};color:#888`;
   const val = `${m};color:#ccc`;
+  // Each row is a list of <span> elements. Text is set with
+  // textContent (never innerHTML): some of it (e.g. the file path)
+  // comes from user-supplied files and must not be parsed as HTML.
   const rows = [];
 
   // Experiment ID (first line, colored by spot color)
   if (ds) {
     const localExpId = expId - (ds.expOffset ?? 0);
-    const key = `${ds.id}:${expId}`;
-    const colorId = (ds.colorOffset ?? 0) + localExpId;
-    const color = store.expColorOverrides[key]
-      ?? expColor(colorId);
-    rows.push(
-      `<span style="font-size:13px;font-family:monospace;font-weight:bold;color:${color}">`
-      + `Exp ${ds.id}:${localExpId}</span>`
-    );
+    rows.push([
+      _span('font-size:13px;font-family:monospace;font-weight:bold',
+            `Exp ${ds.id}:${localExpId}`, _expColor(ds, expId)),
+    ]);
   }
 
   // Cell axes + angles
   const cn = expt.cell_norms;
   const ca = expt.cell_angles;
+  const axLabels = ['a', 'b', 'c'];
   if (cn && ca) {
-    const [a, b, c]             = cn;
-    const [alpha, beta, gamma]  = ca;
-    const axLabels = ['a','b','c'];
-    const norms    = [a, b, c];
-    const angles   = [alpha, beta, gamma];
-    const aNames   = ['α','β','γ'];
+    const aNames = ['α', 'β', 'γ'];
     for (let i = 0; i < 3; i++) {
-      rows.push(
-        `<span style="${val}">${axLabels[i]} = `
-        + `${norms[i].toFixed(2)} Å</span>`
-        + `<span style="${dim}">  `
-        + `${aNames[i]} = `
-        + `${angles[i].toFixed(1)}°</span>`
-      );
+      rows.push([
+        _span(val, `${axLabels[i]} = ${cn[i].toFixed(2)} Å`),
+        _span(dim, `  ${aNames[i]} = ${ca[i].toFixed(1)}°`),
+      ]);
     }
   } else if (cn) {
-    for (let i = 0; i < ['a','b','c'].length; i++) {
-      rows.push(
-        `<span style="${val}">${['a','b','c'][i]} = `
-        + `${cn[i].toFixed(2)} Å</span>`
-      );
+    for (let i = 0; i < 3; i++) {
+      rows.push([
+        _span(val, `${axLabels[i]} = ${cn[i].toFixed(2)} Å`),
+      ]);
     }
   }
 
   // Wavelength
   if (expt.wavelength != null) {
-    rows.push(
-      `<span style="${dim}">λ = </span>`
-      + `<span style="${val}">`
-      + `${expt.wavelength.toFixed(4)} Å</span>`
-    );
+    rows.push([
+      _span(dim, 'λ = '),
+      _span(val, `${expt.wavelength.toFixed(4)} Å`),
+    ]);
   }
 
   // Scan range
@@ -455,15 +445,12 @@ function _refreshNormPanel() {
       s.oscillation_start
       + s.oscillation_delta * s.num_images
     ).toFixed(2);
-    rows.push(
-      `<span style="${dim}">Scan: </span>`
-      + `<span style="${val}">`
-      + `${s.oscillation_start.toFixed(2)}° → `
-      + `${end}°</span>`
-      + `<span style="${dim}"> `
-      + `(Δ = ${s.oscillation_delta.toFixed(3)}°, `
-      + `${s.num_images} imgs)</span>`
-    );
+    rows.push([
+      _span(dim, 'Scan: '),
+      _span(val, `${s.oscillation_start.toFixed(2)}° → ${end}°`),
+      _span(dim, ` (Δ = ${s.oscillation_delta.toFixed(3)}°, `
+                 + `${s.num_images} imgs)`),
+    ]);
   }
 
   // Spot counts for this experiment
@@ -480,39 +467,22 @@ function _refreshNormPanel() {
         if (intS[i])  integrated++;
       }
     }
-    if (total > 0) {
-      rows.push(
-        `<span style="${dim}">Spots: </span>`
-        + `<span style="${val}">`
-        + `${total.toLocaleString()}</span>`
-      );
-    }
-    if (indexed > 0) {
-      rows.push(
-        `<span style="${dim}">Indexed: </span>`
-        + `<span style="${val}">`
-        + `${indexed.toLocaleString()}</span>`
-      );
-    }
-    if (integrated > 0) {
-      rows.push(
-        `<span style="${dim}">Integrated: </span>`
-        + `<span style="${val}">`
-        + `${integrated.toLocaleString()}</span>`
-      );
-    }
+    const count = (label, n) => {
+      if (n > 0) rows.push([
+        _span(dim, `${label}: `),
+        _span(val, n.toLocaleString()),
+      ]);
+    };
+    count('Spots', total);
+    count('Indexed', indexed);
+    count('Integrated', integrated);
   }
 
   // File path (last line, absolute, same color as exp ID)
   if (ds) {
-    const localExpId = expId - (ds.expOffset ?? 0);
-    const key = `${ds.id}:${expId}`;
-    const colorId = (ds.colorOffset ?? 0) + localExpId;
-    const color = store.expColorOverrides[key]
-      ?? expColor(colorId);
-    rows.push(
-      `<span style="${m};color:${color}">${_datasetPath(ds)}</span>`
-    );
+    rows.push([
+      _span(m, String(_datasetPath(ds)), _expColor(ds, expId)),
+    ]);
   }
 
   if (!rows.length) {
@@ -520,8 +490,29 @@ function _refreshNormPanel() {
     return;
   }
 
-  _normEl.innerHTML = rows.join('<br>');
+  _normEl.replaceChildren();
+  rows.forEach((spans, i) => {
+    if (i > 0) _normEl.appendChild(document.createElement('br'));
+    _normEl.append(...spans);
+  });
   _normEl.style.display = 'block';
+}
+
+/** A <span> with fixed styling and plain-text content. */
+function _span(css, text, color) {
+  const el = document.createElement('span');
+  el.style.cssText = css;
+  if (color) el.style.color = color;
+  el.textContent = text;
+  return el;
+}
+
+/** Colour used for an experiment (user override or default). */
+function _expColor(ds, expId) {
+  const localExpId = expId - (ds.expOffset ?? 0);
+  const key = `${ds.id}:${expId}`;
+  const colorId = (ds.colorOffset ?? 0) + localExpId;
+  return store.expColorOverrides[key] ?? expColor(colorId);
 }
 
 // ── Per-frame sprite scaling ──────────────

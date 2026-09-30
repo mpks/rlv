@@ -469,34 +469,35 @@ export function buildExpList() {
         store.filters.visibleExpts
           .has(labelKey);
 
+      // Fixed structure only. Values that can come from files or
+      // from the user (path, label, colour) are set below through DOM
+      // properties / textContent, never interpolated into HTML.
       row.innerHTML = `
         <button class="exp-remove"
           title="Remove dataset">×</button>
         <input type="radio"
           class="exp-radio"
-          name="active-exp"
-          ${checked ? 'checked' : ''}>
-        <div class="exp-color-circle"
-          style="background:${_circleStyle(color, expOpacity)}">
-        </div>
-        <span class="exp-label"
-          title="${makeTooltip(savedLabel)
-            .replace(/"/g, '&quot;')}">
-          exp ${ds.id}:${expId - expOffset}
-        </span>
+          name="active-exp">
+        <div class="exp-color-circle"></div>
+        <span class="exp-label"></span>
         <input type="text"
           class="exp-user-label"
-          placeholder="label…"
-          value="${savedLabel
-            .replace(/"/g, '&quot;')}">
-        <span class="exp-count">
-          ${count.toLocaleString()}
-        </span>
+          placeholder="label…">
+        <span class="exp-count"></span>
         <div class="toggle ${togOn ? 'on' : ''}
           ${frozen ? 'frozen' : ''}"
           data-dsid="${ds.id}"
           data-expid="${expId}">
         </div>`;
+      row.querySelector('.exp-radio').checked = !!checked;
+      row.querySelector('.exp-color-circle').style.background =
+        _circleStyle(color, expOpacity);
+      const labelSpan = row.querySelector('.exp-label');
+      labelSpan.textContent = `exp ${ds.id}:${expId - expOffset}`;
+      labelSpan.title = makeTooltip(savedLabel);
+      row.querySelector('.exp-user-label').value = savedLabel;
+      row.querySelector('.exp-count').textContent =
+        count.toLocaleString();
       list.appendChild(row);
 
       row.querySelector('.exp-remove')

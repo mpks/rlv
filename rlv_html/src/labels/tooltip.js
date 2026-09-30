@@ -214,16 +214,31 @@ function _buildInfo(ds, i, gIdx) {
 
 // ── Render tooltip ────────────────────────
 
+/**
+ * Fill the tooltip table with [key, value] rows.
+ * Uses textContent (never innerHTML): values may come from
+ * user-supplied files and must not be interpreted as HTML.
+ */
+function _fillTable(rows) {
+  const trs = rows.map(([k, v]) => {
+    const tr = document.createElement('tr');
+    const tk = document.createElement('td');
+    const tv = document.createElement('td');
+    tk.textContent = String(k);
+    tv.textContent = String(v);
+    tr.append(tk, tv);
+    return tr;
+  });
+  document.getElementById('tt-table')
+    .replaceChildren(...trs);
+}
+
 function _showOverlay(overlay, cx, cy) {
   if (!_el) return;
   const titleEl = document.getElementById('tt-hkl');
   titleEl.textContent = overlay.title;
   titleEl.style.color = '';
-  document.getElementById('tt-table')
-    .innerHTML = overlay.rows.map(
-      ([k, v]) =>
-        `<tr><td>${k}</td><td>${v}</td></tr>`)
-    .join('');
+  _fillTable(overlay.rows);
   _positionEl(cx, cy);
 }
 
@@ -284,11 +299,7 @@ function _show(info, cx, cy) {
   const titleEl = document.getElementById('tt-hkl');
   titleEl.textContent = info.hkl;
   titleEl.style.color = info.color ?? '';
-  document.getElementById('tt-table')
-    .innerHTML = info.rows.map(
-      ([k, v]) =>
-        `<tr><td>${k}</td><td>${v}</td></tr>`)
-    .join('');
+  _fillTable(info.rows);
   _positionEl(cx, cy);
 }
 
