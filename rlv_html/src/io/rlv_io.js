@@ -561,11 +561,13 @@ export function transformExpOverlayVectors(
         });
     }
   } else {
-    // Restore from parsers
+    // Restore from parsers.
+    // getBeamDirection() is the dxtbx "direction" (sample -> source);
+    // the beam vector shown is the unit s0 (along the beam), as in DIALS.
     const bd =
       ds.exptParser.getBeamDirection(localExpId);
     if (bd)
-      expData.beam_vector = [bd.x, bd.y, bd.z];
+      expData.beam_vector = [-bd.x, -bd.y, -bd.z];
 
     const gonio =
       ds.exptParser.getGoniometer(localExpId);
@@ -599,13 +601,18 @@ function buildExptInfo(exptParser) {
       beamData ? beamData['wavelength']
                : null;
 
-    // s0 scaled to scene units
+    // Beam: dxtbx stores "direction" pointing from the sample towards the
+    // source. The incident beam vector is s0 = -direction / wavelength, and
+    // the drawn beam vector is the unit s0 (as beam.get_unit_s0() in DIALS).
     const bd =
       exptParser.getBeamDirection(i);
-    const s0_scaled = wavelength
-      ? [bd.x / wavelength * SCALE,
-         bd.y / wavelength * SCALE,
-         bd.z / wavelength * SCALE]
+    const unitS0 = bd
+      ? bd.clone().multiplyScalar(-1).normalize() : null;
+    // s0 scaled to scene units
+    const s0_scaled = (wavelength && unitS0)
+      ? [unitS0.x / wavelength * SCALE,
+         unitS0.y / wavelength * SCALE,
+         unitS0.z / wavelength * SCALE]
       : null;
     const ewald_radius = s0_scaled
       ? Math.sqrt(
@@ -677,8 +684,8 @@ function buildExptInfo(exptParser) {
       id: i,
       wavelength,
       s0_scaled,
-      beam_vector: bd
-        ? [bd.x, bd.y, bd.z] : null,
+      beam_vector: unitS0
+        ? [unitS0.x, unitS0.y, unitS0.z] : null,
       rotation_axis: rot_axis,
       ewald_radius,
       scan: scan_info,
