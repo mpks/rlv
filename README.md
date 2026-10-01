@@ -4,6 +4,18 @@ A web replacement for the DIALS reciprocal lattice viewer.
 
 **[Open the viewer](https://mpks.github.io/rlv/)** · [Theory](https://github.com/mpks/rlv/wiki)
 
+
+## Desktop app (Linux)
+
+Download the latest version:
+
+- [RLV-linux-x86_64.AppImage](../../releases/latest/download/RLV-linux-x86_64.AppImage) — any Linux distribution.
+  Make it executable and run it: `chmod +x RLV-linux-x86_64.AppImage && ./RLV-linux-x86_64.AppImage`
+- [RLV-linux-amd64.deb](../../releases/latest/download/RLV-linux-amd64.deb) — Debian/Ubuntu: `sudo apt install ./RLV-linux-amd64.deb`
+- [RLV-linux-x86_64.rpm](../../releases/latest/download/RLV-linux-x86_64.rpm) — Fedora/RHEL: `sudo dnf install ./RLV-linux-x86_64.rpm`
+
+Older versions are on the [Releases](../../releases) page.
+
 ## Loading files
 
 - Drag a `.expt` and a `.refl` file onto the view, or click **Open**.
