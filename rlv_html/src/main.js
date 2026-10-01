@@ -62,6 +62,8 @@ import { initDialog }
   from './ui/dialog.js';
 import { initDropZone }
   from './ui/dropzone.js';
+import { loadFromQuery }
+  from './io/urlLoad.js';
 import {
   showLoading,
   hideLoading,
@@ -150,3 +152,6 @@ initDropZone(loadFiles);
 initSelection();
 initTooltip();
 initHKLLabels();
+
+// Load files named in the address (?expt=…&refl=…), if any.
+loadFromQuery(loadFiles);
