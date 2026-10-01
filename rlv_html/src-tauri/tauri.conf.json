@@ -1,0 +1,48 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "RLV",
+  "mainBinaryName": "rlv",
+  "version": "0.1.0",
+  "identifier": "uk.ac.ccp4.rlv",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "RLV - Reciprocal Lattice Viewer",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 800,
+        "minHeight": 500,
+        "resizable": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "appimage",
+      "deb",
+      "rpm"
+    ],
+    "shortDescription": "Reciprocal lattice viewer for DIALS data",
+    "longDescription": "Interactive 3D viewer for DIALS .expt/.refl files, a replacement for the DIALS reciprocal lattice viewer.",
+    "license": "BSD-3-Clause",
+    "copyright": "Copyright (c) 2026, Science and Technology Facilities Council",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

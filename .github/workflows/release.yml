@@ -1,0 +1,96 @@
+# Build the RLV desktop app and attach it to a GitHub Release.
+#
+# Runs when a version tag is pushed:
+#     git tag v0.1.0
+#     git push origin v0.1.0
+#
+# Creates a *draft* release for that tag with:
+#   - RLV_<version>_amd64.AppImage   (any Linux: chmod +x and run)
+#   - RLV_<version>_amd64.deb        (Debian/Ubuntu)
+#   - RLV-<version>-1.x86_64.rpm     (Fedora/RHEL)
+#   - rlv.html                       (the single-file web viewer)
+# Check it on the Releases page, then click "Publish release".
+#
+# The app version is taken from the tag (v0.1.0 -> 0.1.0).
+# To add macOS/Windows later, add entries to the matrix below.
+name: Release desktop app
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write           # needed to create the release and upload files
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Built on the older Ubuntu so the app also runs on older distros.
+          - platform: ubuntu-22.04
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Linux build dependencies
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf rpm
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rlv_html/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: rlv_html/src-tauri -> target
+
+      - name: Install npm packages
+        working-directory: rlv_html
+        run: npm ci
+
+      - name: Set app version from tag
+        working-directory: rlv_html
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v' src-tauri/tauri.conf.json > tmp.json
+          mv tmp.json src-tauri/tauri.conf.json
+          echo "Building version $VERSION"
+
+      # Builds the web page (npm run build), then the app and the installers,
+      # and uploads them to a draft release for this tag.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: rlv_html
+          tagName: ${{ github.ref_name }}
+          releaseName: RLV ${{ github.ref_name }}
+          releaseBody: |
+            **Linux:** download the `.AppImage`, then `chmod +x RLV_*.AppImage` and run it,
+            or install the `.deb` (Debian/Ubuntu) or `.rpm` (Fedora/RHEL).
+
+            **Web version:** `rlv.html` is the single-file viewer. Open it in a browser,
+            or host it on a web server (see the README for `?expt=…&refl=…`).
+          releaseDraft: true
+          prerelease: false
+
+      # Also attach the single-file web viewer, so other sites can fetch a
+      # fixed version from .../releases/download/<tag>/rlv.html
+      # (or .../releases/latest/download/rlv.html once published).
+      - name: Attach web viewer
+        if: startsWith(matrix.platform, 'ubuntu')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp rlv_html/dist/index.html rlv.html
+          gh release upload "$GITHUB_REF_NAME" rlv.html --clobber
