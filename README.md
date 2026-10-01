@@ -13,6 +13,8 @@ A web replacement for the DIALS reciprocal lattice viewer.
   index.html?expt=<url>&refl=<url>
   ```
 
+  Repeat the pair to load several datasets (the first replaces, the rest are added):
+  `?expt=a.expt&refl=a.refl&expt=b.expt&refl=b.refl`.
   URLs can be relative to the page (`?expt=refined.expt&refl=refined.refl`) or absolute.
   Files on a different server than the page load only if that server allows
   cross-origin access (sends an `Access-Control-Allow-Origin` header).

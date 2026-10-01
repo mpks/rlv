@@ -1,0 +1,93 @@
+<!doctype html>
+<!--
+  Example: embedding the RLV viewer in another page with an <iframe>.
+
+  This is how a host site (e.g. CCP4 Cloud, a lab web page, a report) can show
+  datasets in RLV without changing the viewer: it builds the viewer's address
+  with ?expt=…&refl=… and puts it in an iframe.
+
+  Try it:
+    cp rlv_html/dist/index.html rlv_html/examples/embed_example.html /path/to/data/
+    cd /path/to/data
+    python3 -m http.server 8000
+    open http://localhost:8000/embed_example.html
+
+  Edit VIEWER and DATASETS below to match your files. Paths are relative to
+  this page (or absolute URLs, if the other server allows cross-origin access).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RLV embedding example</title>
+<style>
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    font: 14px system-ui, sans-serif; background: #f4f4f6; color: #222;
+  }
+  header { padding: 10px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  button {
+    padding: 5px 12px; border: 1px solid #bbb; border-radius: 4px;
+    background: #fff; cursor: pointer; font: inherit;
+  }
+  button.active { background: #2b6cb0; border-color: #2b6cb0; color: #fff; }
+  #link { margin-left: auto; font-size: 12px; }
+  iframe { flex: 1; width: 100%; border: 0; border-top: 1px solid #ccc; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>My processing results</h1>
+  <span id="buttons"></span>
+  <a id="link" target="_blank">open viewer in its own tab ↗</a>
+</header>
+
+<iframe id="rlv" title="Reciprocal lattice viewer"></iframe>
+
+<script>
+  // Where the viewer is. Could also be "https://mpks.github.io/rlv/".
+  const VIEWER = 'index.html';
+
+  // The datasets this page offers. Each is a list of [expt, refl] pairs;
+  // more than one pair loads them together in the same view.
+  const DATASETS = {
+    'Indexed': [['indexed.expt', 'indexed.refl']],
+    'Refined': [['refined.expt', 'refined.refl']],
+    'Both':    [['indexed.expt', 'indexed.refl'],
+                ['refined.expt', 'refined.refl']],
+  };
+
+  // Build the viewer address. URLSearchParams encodes special characters
+  // in file names (spaces, +, &, #) so they reach the viewer intact.
+  function viewerUrl(pairs) {
+    const q = new URLSearchParams();
+    for (const [expt, refl] of pairs) {
+      q.append('expt', expt);
+      q.append('refl', refl);
+    }
+    return VIEWER + '?' + q.toString();
+  }
+
+  const frame = document.getElementById('rlv');
+  const link = document.getElementById('link');
+  const bar = document.getElementById('buttons');
+
+  function show(name, button) {
+    const url = viewerUrl(DATASETS[name]);
+    frame.src = url;            // changing src reloads the viewer with new files
+    link.href = url;
+    for (const b of bar.children) b.classList.toggle('active', b === button);
+  }
+
+  for (const name of Object.keys(DATASETS)) {
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.onclick = () => show(name, b);
+    bar.appendChild(b);
+  }
+  show(Object.keys(DATASETS)[0], bar.firstChild);
+</script>
+</body>
+</html>

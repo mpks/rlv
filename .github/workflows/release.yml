@@ -8,8 +8,11 @@
 #   - RLV_<version>_amd64.AppImage   (any Linux: chmod +x and run)
 #   - RLV_<version>_amd64.deb        (Debian/Ubuntu)
 #   - RLV-<version>-1.x86_64.rpm     (Fedora/RHEL)
+#   - the same three with fixed names (RLV-linux-x86_64.AppImage, …)
 #   - rlv.html                       (the single-file web viewer)
 # Check it on the Releases page, then click "Publish release".
+# The README links to .../releases/latest/download/<fixed name>, which
+# always points at the newest *published* (not draft) release.
 #
 # The app version is taken from the tag (v0.1.0 -> 0.1.0).
 # To add macOS/Windows later, add entries to the matrix below.
@@ -84,13 +87,19 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-      # Also attach the single-file web viewer, so other sites can fetch a
-      # fixed version from .../releases/download/<tag>/rlv.html
-      # (or .../releases/latest/download/rlv.html once published).
-      - name: Attach web viewer
+      # Also attach copies with fixed names (no version number), so the
+      # README can link to .../releases/latest/download/<name> and always
+      # get the newest published release. rlv.html is the single-file web
+      # viewer, for sites that host their own copy.
+      - name: Attach fixed-name downloads
         if: startsWith(matrix.platform, 'ubuntu')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          B=rlv_html/src-tauri/target/release/bundle
+          cp $B/appimage/*.AppImage RLV-linux-x86_64.AppImage
+          cp $B/deb/*.deb           RLV-linux-amd64.deb
+          cp $B/rpm/*.rpm           RLV-linux-x86_64.rpm
           cp rlv_html/dist/index.html rlv.html
-          gh release upload "$GITHUB_REF_NAME" rlv.html --clobber
+          gh release upload "$GITHUB_REF_NAME" --clobber \
+            RLV-linux-x86_64.AppImage RLV-linux-amd64.deb RLV-linux-x86_64.rpm rlv.html
