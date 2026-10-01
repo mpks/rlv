@@ -19,6 +19,19 @@ A web replacement for the DIALS reciprocal lattice viewer.
   Files on a different server than the page load only if that server allows
   cross-origin access (sends an `Access-Control-Allow-Origin` header).
 
+### From the command line (local or remote machine)
+
+`dials_rlv.py` (repo root, Python standard library only) serves the viewer and
+your files and opens them in the browser:
+
+```bash
+python3 dials_rlv.py indexed.expt indexed.refl
+python3 dials_rlv.py a.expt a.refl b.expt b.refl     # several datasets
+```
+
+Over SSH it prints an `ssh -L …` command to run on your own computer and a link
+to open there, so the viewer runs locally and only the data travels over SSH.
+
 ### Trying it locally
 
 Serve the viewer and the data from one directory:
