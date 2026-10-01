@@ -43,6 +43,16 @@ export function initDialog(onLoad) {
       _onLoadClicked);
 }
 
+/**
+ * Set the chosen .expt ('expt') or .refl ('refl') file, as if picked with
+ * the Browse button. Used by the desktop app's native file dialog.
+ */
+export function setPendingFile(kind, file) {
+  if (kind === 'expt') _pendingExpt = file;
+  else _pendingRefl = file;
+  _el(`dlg-${kind}-name`).value = file?.name ?? '';
+}
+
 // ── Open / close ──────────────────────────
 
 function _openDialog() {

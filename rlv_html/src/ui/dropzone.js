@@ -39,13 +39,19 @@ export function initDropZone(onLoad) {
   wrap.addEventListener('drop', e => {
     e.preventDefault();
     wrap.classList.remove('drag-over');
-    _handleDrop(e.dataTransfer.files);
+    handleDroppedFiles(e.dataTransfer.files);
   });
 }
 
 // ── Drop handling ─────────────────────────
 
-function _handleDrop(fileList) {
+/**
+ * Load dropped files: picks the .expt and .refl among them and asks
+ * add/replace if data is already loaded. Also used by the desktop app,
+ * which receives drops natively.
+ * @param {File[]|FileList} fileList
+ */
+export function handleDroppedFiles(fileList) {
   const files = Array.from(fileList);
   const expt  = files.find(f =>
     f.name.toLowerCase().endsWith('.expt'));
@@ -68,6 +74,12 @@ function _handleDrop(fileList) {
   } else {
     _showDialog(expt, refl);
   }
+}
+
+/** Show or hide the drag-over highlight on the 3D view. */
+export function setDragHighlight(on) {
+  document.getElementById('canvas-wrap')
+    ?.classList.toggle('drag-over', on);
 }
 
 // ── Add / replace dialog ──────────────────

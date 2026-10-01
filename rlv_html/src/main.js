@@ -64,6 +64,8 @@ import { initDropZone }
   from './ui/dropzone.js';
 import { loadFromQuery }
   from './io/urlLoad.js';
+import { initDesktop }
+  from './platform/desktop.js';
 import {
   showLoading,
   hideLoading,
@@ -149,6 +151,7 @@ initFilterPanel();
 initToolsPanel();
 initDialog(loadFiles);
 initDropZone(loadFiles);
+initDesktop();          // desktop app only; no-op in a browser
 initSelection();
 initTooltip();
 initHKLLabels();

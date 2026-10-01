@@ -16,6 +16,8 @@
     "vite-plugin-singlefile": "^2.3.3"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/plugin-dialog": "^2.8.1",
     "@ygoe/msgpack": "^1.0.3",
     "lz4js": "^0.2.0",
     "three": "^0.184.0"
