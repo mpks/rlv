@@ -14,7 +14,9 @@ A web replacement for the DIALS reciprocal lattice viewer.
 
 ![RLV showing a reciprocal lattice](docs/images/RLV_screenshot.png)
 
-[Theory](https://github.com/mpks/rlv/wiki)
+
+- **[User Guide](https://github.com/mpks/rlv/wiki/User-Guide)** — getting started, controls and how-tos
+- **[Developer Notes](https://github.com/mpks/rlv/wiki/Theory-behind-Reciprocal-Lattice-Viewer)** — how spot positions are mapped to reciprocal space
 
 ## Licence
 
