@@ -1,6 +1,6 @@
 # RLV — Reciprocal Lattice Viewer
 
-A web replacement for the DIALS reciprocal lattice viewer.
+A replacement for the DIALS reciprocal lattice viewer.
 
 <p align="center">
   <a href="https://mpks.github.io/rlv/">
