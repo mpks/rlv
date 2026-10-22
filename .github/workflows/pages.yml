@@ -1,4 +1,4 @@
-# Build rlv_html and publish it to GitHub Pages
+# Build app and publish it to GitHub Pages
 # (https://mpks.github.io/rlv/) on every push to main.
 name: Deploy RLV to GitHub Pages
 
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: rlv_html
+        working-directory: app
     steps:
       - uses: actions/checkout@v5
 
@@ -29,14 +29,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: rlv_html/package-lock.json
+          cache-dependency-path: app/package-lock.json
 
       - run: npm ci
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: rlv_html/dist
+          path: app/dist
 
   deploy:
     needs: build

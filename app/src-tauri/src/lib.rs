@@ -1,5 +1,5 @@
 // The desktop app is a native window that shows the same viewer page
-// (rlv_html/dist/index.html) as the web version. The page's
+// (app/dist/index.html) as the web version. The page's
 // src/platform/desktop.js uses the pieces below to replace browser
 // features that work poorly in the Linux web engine (file chooser,
 // drag-and-drop, page zoom).

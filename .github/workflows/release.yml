@@ -49,20 +49,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: rlv_html/package-lock.json
+          cache-dependency-path: app/package-lock.json
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: swatinem/rust-cache@v2
         with:
-          workspaces: rlv_html/src-tauri -> target
+          workspaces: app/src-tauri -> target
 
       - name: Install npm packages
-        working-directory: rlv_html
+        working-directory: app
         run: npm ci
 
       - name: Set app version from tag
-        working-directory: rlv_html
+        working-directory: app
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           jq --arg v "$VERSION" '.version = $v' src-tauri/tauri.conf.json > tmp.json
@@ -75,7 +75,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: rlv_html
+          projectPath: app
           tagName: ${{ github.ref_name }}
           releaseName: RLV ${{ github.ref_name }}
           releaseBody: |
@@ -96,10 +96,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          B=rlv_html/src-tauri/target/release/bundle
+          B=app/src-tauri/target/release/bundle
           cp $B/appimage/*.AppImage RLV-linux-x86_64.AppImage
           cp $B/deb/*.deb           RLV-linux-amd64.deb
           cp $B/rpm/*.rpm           RLV-linux-x86_64.rpm
-          cp rlv_html/dist/index.html rlv.html
+          cp app/dist/index.html rlv.html
           gh release upload "$GITHUB_REF_NAME" --clobber \
             RLV-linux-x86_64.AppImage RLV-linux-amd64.deb RLV-linux-x86_64.rpm rlv.html
