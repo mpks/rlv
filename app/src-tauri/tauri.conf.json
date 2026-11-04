@@ -27,11 +27,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "appimage",
-      "deb",
-      "rpm"
-    ],
+    "targets": "all",
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "shortDescription": "Reciprocal lattice viewer for DIALS data",
     "longDescription": "Interactive 3D viewer for DIALS .expt/.refl files, a replacement for the DIALS reciprocal lattice viewer.",
     "license": "BSD-3-Clause",

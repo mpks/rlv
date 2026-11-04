@@ -8,14 +8,14 @@
 #   - RLV_<version>_amd64.AppImage   (any Linux: chmod +x and run)
 #   - RLV_<version>_amd64.deb        (Debian/Ubuntu)
 #   - RLV-<version>-1.x86_64.rpm     (Fedora/RHEL)
-#   - the same three with fixed names (RLV-linux-x86_64.AppImage, …)
+#   - RLV_<version>_universal.dmg    (macOS, Apple Silicon and Intel)
+#   - the same with fixed names (RLV-linux-x86_64.AppImage, RLV-macos-universal.dmg, …)
 #   - rlv.html                       (the single-file web viewer)
 # Check it on the Releases page, then click "Publish release".
 # The README links to .../releases/latest/download/<fixed name>, which
 # always points at the newest *published* (not draft) release.
 #
 # The app version is taken from the tag (v0.1.0 -> 0.1.0).
-# To add macOS/Windows later, add entries to the matrix below.
 name: Release desktop app
 
 on:
@@ -33,6 +33,10 @@ jobs:
         include:
           # Built on the older Ubuntu so the app also runs on older distros.
           - platform: ubuntu-22.04
+            args: ''
+          # One .dmg that runs on both Apple Silicon and Intel Macs.
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -52,6 +56,9 @@ jobs:
           cache-dependency-path: app/package-lock.json
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          # The universal macOS build needs both Mac CPU types.
+          targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - uses: swatinem/rust-cache@v2
         with:
@@ -70,17 +77,25 @@ jobs:
           echo "Building version $VERSION"
 
       # Builds the web page (npm run build), then the app and the installers,
-      # and uploads them to a draft release for this tag.
+      # and uploads them to a draft release for this tag. Both jobs add
+      # their files to the same release.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: app
+          args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
           releaseName: RLV ${{ github.ref_name }}
           releaseBody: |
             **Linux:** download the `.AppImage`, then `chmod +x RLV_*.AppImage` and run it,
             or install the `.deb` (Debian/Ubuntu) or `.rpm` (Fedora/RHEL).
+
+            **macOS:** download the `.dmg`, open it and drag RLV to Applications.
+            The app is not yet signed by Apple, so the first time macOS will refuse to open it:
+            go to System Settings → Privacy & Security and click **Open Anyway**.
+            If macOS says the app "is damaged", run
+            `xattr -dr com.apple.quarantine /Applications/RLV.app` in Terminal.
 
             **Web version:** `rlv.html` is the single-file viewer. Open it in a browser,
             or host it on a web server (see the README for `?expt=…&refl=…`).
@@ -91,7 +106,7 @@ jobs:
       # README can link to .../releases/latest/download/<name> and always
       # get the newest published release. rlv.html is the single-file web
       # viewer, for sites that host their own copy.
-      - name: Attach fixed-name downloads
+      - name: Attach fixed-name downloads (Linux)
         if: startsWith(matrix.platform, 'ubuntu')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -103,3 +118,11 @@ jobs:
           cp app/dist/index.html rlv.html
           gh release upload "$GITHUB_REF_NAME" --clobber \
             RLV-linux-x86_64.AppImage RLV-linux-amd64.deb RLV-linux-x86_64.rpm rlv.html
+
+      - name: Attach fixed-name downloads (macOS)
+        if: startsWith(matrix.platform, 'macos')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp app/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg RLV-macos-universal.dmg
+          gh release upload "$GITHUB_REF_NAME" --clobber RLV-macos-universal.dmg
