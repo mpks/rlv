@@ -44,7 +44,28 @@ You can rename the file (for example to `rlv`) and move it to `~/.local/bin`.
 On Ubuntu 22.04 and later, AppImages need the FUSE 2 library:
 `sudo apt install libfuse2`.
 
-## macOS and Windows
+## macOS
+
+| Format | Best for | Download |
+|---|---|---|
+| `.dmg` | macOS 11 or later, Apple Silicon and Intel | [RLV-macos-universal.dmg](../../releases/latest/download/RLV-macos-universal.dmg) |
+
+Open the downloaded `.dmg` and drag **RLV** into **Applications**.
+
+RLV is not yet signed by Apple, so the first time you open it macOS will block it:
+
+1. Try to open RLV once, and close the warning.
+2. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the RLV message.
+3. Open RLV again and confirm.
+
+You only need to do this once. If macOS says the app "is damaged and can't be opened",
+run this in Terminal, then open RLV again:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/RLV.app
+```
+
+## Windows
 
 Not available yet. Use the [web version](https://mpks.github.io/rlv/) in the
 meantime.
