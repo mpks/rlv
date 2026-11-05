@@ -5,6 +5,12 @@
  * Supports two modes:
  *   replace — clears existing data first
  *   add     — merges with existing data
+ *
+ * Choosing both files at once (Ctrl/Shift-click in the file chooser) fills
+ * both fields. In the desktop app, choosing one file also fills in its
+ * partner from the same folder (indexed.expt ↔ indexed.refl); see
+ * platform/desktop.js. A browser page can't look into the folder, so
+ * there the user picks both together instead.
  */
 
 let _pendingExpt = null;
@@ -23,18 +29,16 @@ export function initDialog(onLoad) {
   _el('btn-open-dials')
     ?.addEventListener('click',
       _openDialog);
-  _el('dlg-expt-input')
-    ?.addEventListener('change', e => {
-      _pendingExpt = e.target.files[0];
-      _el('dlg-expt-name').value =
-        _pendingExpt?.name ?? '';
-    });
-  _el('dlg-refl-input')
-    ?.addEventListener('change', e => {
-      _pendingRefl = e.target.files[0];
-      _el('dlg-refl-name').value =
-        _pendingRefl?.name ?? '';
-    });
+  for (const kind of ['expt', 'refl']) {
+    const input = _el(`dlg-${kind}-input`);
+    if (!input) continue;
+    // Allow picking both files in one go; each goes to the field matching
+    // its extension.
+    input.multiple = true;
+    input.accept = '.expt,.refl';
+    input.addEventListener('change', e =>
+      _onPicked(kind, Array.from(e.target.files)));
+  }
   _el('dlg-cancel')
     ?.addEventListener('click',
       _closeDialog);
@@ -51,6 +55,32 @@ export function setPendingFile(kind, file) {
   if (kind === 'expt') _pendingExpt = file;
   else _pendingRefl = file;
   _el(`dlg-${kind}-name`).value = file?.name ?? '';
+}
+
+/** True if a file has already been chosen for 'expt' or 'refl'. */
+export function hasPendingFile(kind) {
+  return kind === 'expt' ? !!_pendingExpt : !!_pendingRefl;
+}
+
+// ── Picking files ─────────────────────────
+
+/**
+ * Files chosen with the Browse button for `kind`. A file whose extension
+ * says it is the other kind goes to the other field.
+ */
+function _onPicked(kind, files) {
+  const seen = new Set();
+  for (const f of files) {
+    const k = _kindOf(f.name) ?? kind;
+    if (seen.has(k)) continue;        // first file of each kind wins
+    seen.add(k);
+    setPendingFile(k, f);
+  }
+}
+
+function _kindOf(name) {
+  const m = /\.(expt|refl)$/i.exec(name);
+  return m ? m[1].toLowerCase() : null;
 }
 
 // ── Open / close ──────────────────────────

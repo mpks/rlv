@@ -15,12 +15,20 @@ fn read_file(path: String) -> Result<tauri::ipc::Response, String> {
         .map_err(|e| format!("Could not read {path}: {e}"))
 }
 
+/// True if `path` is an existing file. Used to find the partner of a
+/// chosen file (indexed.expt -> indexed.refl) without reading it.
+#[tauri::command]
+fn file_exists(path: String) -> bool {
+    std::path::Path::new(&path).is_file()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             read_file,
+            file_exists,
             remote::remote_hosts,
             remote::remote_list,
             remote::remote_read,

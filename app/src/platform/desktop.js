@@ -19,7 +19,7 @@
  * Files are read by the app's `read_file` command (src-tauri/src/lib.rs).
  */
 
-import { setPendingFile } from '../ui/dialog.js';
+import { setPendingFile, hasPendingFile } from '../ui/dialog.js';
 import { handleDroppedFiles, setDragHighlight } from '../ui/dropzone.js';
 import { showError } from '../ui/statusbar.js';
 
@@ -69,6 +69,17 @@ export async function initDesktop(onLoad) {
         if (!path) return;                        // cancelled
         _save(LAST_DIR_KEY, _dirname(path));
         setPendingFile(kind, await readAsFile(path));
+
+        // Also fill in the partner from the same folder (indexed.expt ↔
+        // indexed.refl), unless the other file has been chosen already.
+        // The user can still Browse… for a different one afterwards.
+        const other = kind === 'expt' ? 'refl' : 'expt';
+        if (!hasPendingFile(other)) {
+          const partner = path.replace(/\.(expt|refl)$/i, `.${other}`);
+          if (partner !== path && await invoke('file_exists', { path: partner })) {
+            setPendingFile(other, await readAsFile(partner));
+          }
+        }
       } catch (err) {
         showError(err?.message || String(err));
         console.error(err);
