@@ -57,7 +57,7 @@ export function initRenderer() {
   controls = new TrackballControls(
     camera, renderer.domElement);
   controls.rotateSpeed  = 3.0;
-  controls.panSpeed     = 0.8;
+  controls.panSpeed     = 0.8;   // replaced at each drag start, see below
   controls.staticMoving = true;
   controls.noZoom       = true;
 
@@ -67,6 +67,17 @@ export function initRenderer() {
 
   // Shift + drag: roll the view (turn it around the screen axis).
   _initRoll();
+
+  // Right-drag panning that "grabs" the view: the spot under the cursor
+  // stays under the cursor at any zoom. TrackballControls scales panning
+  // by the camera distance times panSpeed, so set panSpeed to cancel that
+  // each time a drag starts (capture phase: before its own handler).
+  renderer.domElement.addEventListener('pointerdown', () => {
+    const dist = camera.position.distanceTo(controls.target);
+    if (dist > 0) {
+      controls.panSpeed = renderer.domElement.clientWidth / dist;
+    }
+  }, { capture: true });
   window.addEventListener(
     'resize', onResize);
 
