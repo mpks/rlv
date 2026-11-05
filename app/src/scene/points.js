@@ -51,8 +51,16 @@ const FRAG = `
  * Returns THREE.Points (caller adds to
  * scene via renderer.setPointsObject).
  */
+/** The size set by the Spot size slider (2 if there is no slider). */
+function currentPointSize() {
+  const v = Number(
+    document.getElementById('filt-point-size')?.value);
+  return v > 0 ? v : 3;
+}
+
+
 export function buildPointCloud(
-  pointSize = 5.0
+  pointSize = currentPointSize()
 ) {
   // Merge all datasets
   const allPts  = [];

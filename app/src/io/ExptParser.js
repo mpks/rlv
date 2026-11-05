@@ -183,11 +183,27 @@ export class ExptParser{
 		});
 	};
 
+	/**
+	 * Number of experiments (one per lattice). Several experiments can share
+	 * one imageset, e.g. after dials.index max_lattices=2, so this is not
+	 * the number of imagesets.
+	 */
 	numExperiments(){
 		if (this.exptJSON == null){
 			return 0;
 		}
-		return this.exptJSON["imageset"].length;
+		return this.exptJSON["experiment"].length;
+	}
+
+	/**
+	 * Index of the first experiment that uses imageset `imagesetIdx`
+	 * (0 if none). Used for spots that belong to no experiment (unindexed,
+	 * id -1), which still need the beam, scan and goniometer of their images.
+	 */
+	firstExperimentForImageset(imagesetIdx){
+		const expts = this.exptJSON?.["experiment"] ?? [];
+		const i = expts.findIndex(e => e["imageset"] === imagesetIdx);
+		return i >= 0 ? i : 0;
 	}
 
 	parseExperimentJSON(jsonString){

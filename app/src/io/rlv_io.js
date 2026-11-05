@@ -67,14 +67,16 @@ export function buildRLV(
     reflParser.containsWavelengths()
       ? reflParser.getWavelengths() : null;
 
-  // Precompute panel data per unique panel
-  const uniquePanels = new Set(panels);
-  const panelDataCache = {};
-  for (const pid of uniquePanels) {
-    panelDataCache[pid] =
-      exptParser.getDetectorPanelDataByIdx(
-        0, pid);
-  }
+  // Panel data per (experiment, panel), looked up once.
+  const panelDataCache = new Map();
+  const panelDataFor = (expt, pid) => {
+    const key = `${expt}:${pid}`;
+    if (!panelDataCache.has(key)) {
+      panelDataCache.set(key,
+        exptParser.getDetectorPanelDataByIdx(expt, pid));
+    }
+    return panelDataCache.get(key);
+  };
 
   const meta = {
     id:    new Int32Array(n),
@@ -122,6 +124,13 @@ export function buildRLV(
       exptIDs ? exptIDs[i] : 0;
     const imagesetID =
       imagesetIDs ? imagesetIDs[i] : 0;
+    // Experiment whose beam, detector, scan and goniometer apply to this
+    // spot. Lattices can share an imageset, so look these up by experiment,
+    // not by imageset. Unindexed spots (id -1) use the first experiment
+    // of their imageset.
+    const modelExpt = exptID >= 0
+      ? exptID
+      : exptParser.firstExperimentForImageset(imagesetID);
     const panelIdx = parseInt(panels[i]);
 
     const flag = flags ? flags[i] : 0;
@@ -184,14 +193,14 @@ export function buildRLV(
     meta.z[i] = xyz[2];
 
     const panelData =
-      panelDataCache[panelIdx];
+      panelDataFor(modelExpt, panelIdx);
     if (!panelData) continue;
 
     // Wavelength: per-reflection
     // or from beam
     let wavelength =
       exptParser.getBeamData(
-        imagesetID)['wavelength'];
+        modelExpt)['wavelength'];
     if (wavelengths && wavelengths[i]) {
       wavelength = wavelengths[i];
     }
@@ -202,7 +211,7 @@ export function buildRLV(
     // beam direction)
     const unitS0 =
       exptParser.getBeamDirection(
-        imagesetID)
+        modelExpt)
       .clone()
       .multiplyScalar(-1)
       .normalize();
@@ -225,9 +234,9 @@ export function buildRLV(
     // into reciprocal space frame
     // (same as DIALS viewer)
     const scan =
-      exptParser.getScan(imagesetID);
+      exptParser.getScan(modelExpt);
     const gonio =
-      exptParser.getGoniometer(imagesetID);
+      exptParser.getGoniometer(modelExpt);
 
     if (gonio && scan && xyzObsMm) {
       // angle is the mm z-coordinate
@@ -360,8 +369,6 @@ export function recomputeExpPoints(
     reflParser.containsExperimentIDs()
       ? reflParser.getExperimentIDs()
       : null;
-  const imagesetIDs =
-    reflParser.getImagesetIDs() ?? exptIDs;
   const xyzObs =
     reflParser.containsXYZObs()
       ? reflParser.getXYZObs() : null;
@@ -375,12 +382,13 @@ export function recomputeExpPoints(
     reflParser.containsWavelengths()
       ? reflParser.getWavelengths() : null;
 
+  // All spots handled here belong to localExpId, so its models apply.
   const uniquePanels = new Set(panels);
   const panelDataCache = {};
   for (const pid of uniquePanels) {
     panelDataCache[pid] =
       exptParser.getDetectorPanelDataByIdx(
-        0, pid);
+        localExpId, pid);
   }
 
   const gonio =
@@ -422,8 +430,6 @@ export function recomputeExpPoints(
     const exptID = exptIDs ? exptIDs[i] : 0;
     if (exptID !== localExpId) continue;
 
-    const imagesetID =
-      imagesetIDs ? imagesetIDs[i] : 0;
     const panelIdx = parseInt(panels[i]);
     const panelData = panelDataCache[panelIdx];
     if (!panelData) continue;
@@ -435,14 +441,14 @@ export function recomputeExpPoints(
 
     let wavelength =
       exptParser.getBeamData(
-        imagesetID)['wavelength'];
+        localExpId)['wavelength'];
     if (wavelengths && wavelengths[i]) {
       wavelength = wavelengths[i];
     }
     if (!wavelength) continue;
 
     const unitS0 =
-      exptParser.getBeamDirection(imagesetID)
+      exptParser.getBeamDirection(localExpId)
         .clone().multiplyScalar(-1).normalize();
 
     const s1 = getS1(
@@ -761,4 +767,3 @@ export function rlvToViewerFormat(rlvData) {
     experiments:  expts,
   };
 }
-
