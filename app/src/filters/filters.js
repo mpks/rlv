@@ -10,6 +10,7 @@
  */
 
 import { store } from '../state/store.js';
+import { spotOwner } from './colors.js';
 import {
   getPointsObject,
 } from '../scene/renderer.js';
@@ -44,11 +45,19 @@ export function applyFilters() {
     const np = ds.rawData.points.length;
 
     for (let i = 0; i < np; i++) {
+      // The experiment's switch covers all its spots, including spots
+      // in no lattice (id -1) recorded on its images.
       const expKey =
-        `${ds.id}:${d.id[i]}`;
+        `${ds.id}:${spotOwner(ds, i)}`;
 
       // Experiment visibility
       if (!f.visibleExpts.has(expKey)) {
+        globalIdx++;
+        continue;
+      }
+
+      // Spots in no lattice have no crystal frame.
+      if (store.overlays.crystalFrame && d.id[i] < 0) {
         globalIdx++;
         continue;
       }
@@ -69,8 +78,10 @@ export function applyFilters() {
           && !indexed) {
         globalIdx++; continue;
       }
+      // Unindexed as in the DIALS viewer: strong (found by spot
+      // finding) and not indexed.
       if (mode === 'unindexed'
-          && indexed) {
+          && (indexed || !d.strong_status?.[i])) {
         globalIdx++; continue;
       }
       if (mode === 'integrated'

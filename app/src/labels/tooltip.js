@@ -12,7 +12,7 @@ import {
 } from '../scene/renderer.js';
 import { checkOverlayHover }
   from '../scene/overlays.js';
-import { expColor }
+import { spotColor }
   from '../filters/colors.js';
 
 const RADIUS_PX = 5;
@@ -200,14 +200,13 @@ function _buildInfo(ds, i, gIdx) {
       ? `(${d.h[i]} ${d.k[i]} ${d.l[i]})`
       : `spot ${gIdx}`;
 
-  const expId  = d.id?.[i];
-  const key    = `${ds.id}:${expId}`;
-  const colorId =
-    (ds.colorOffset ?? 0)
-    + (expId - (ds.expOffset ?? 0));
-  const color =
-    store.expColorOverrides[key]
-    ?? expColor(colorId);
+  // Title in the colour the spot is drawn with, whatever the colour
+  // mode (experiment, unindexed, resolution, intensity, I/σ).
+  const attr = getPointsObject()?.geometry.attributes.color;
+  const color = attr
+    ? '#' + new THREE.Color(
+        attr.getX(gIdx), attr.getY(gIdx), attr.getZ(gIdx)).getHexString()
+    : spotColor(ds, i);
 
   return { hkl, rows, color };
 }

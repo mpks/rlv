@@ -8,7 +8,7 @@
  *   - Filter slider/number pairs
  */
 
-import { store, setExpColor, setExpOpacity, setActiveExp, setOverlay, removeDataset, totalSpots, onChange }
+import { store, setExpColor, setUnindexedColor, setExpOpacity, setActiveExp, setOverlay, removeDataset, totalSpots, onChange }
   from '../state/store.js';
 import { showColorPicker }
   from './colorPicker.js';
@@ -23,7 +23,7 @@ import {
   setHKLLabelSize,
   rebuildHKLLabels,
 } from '../labels/hklLabels.js';
-import { expColor }
+import { expColor, spotOwner, unindexedColorOf }
   from '../filters/colors.js';
 import {
   setDMin, setDMax,
@@ -378,6 +378,41 @@ export function updateInspectionRange(dLo) {
 // Returns the CSS `background` value for a
 // color circle: solid when opacity=1, split
 // left=solid / right=transparent otherwise.
+/** Number of spots belonging to experiment expId of dataset ds. */
+function _ownedCount(ds, expId) {
+  const n = ds.rawData.points.length;
+  let count = 0;
+  for (let i = 0; i < n; i++) {
+    if (spotOwner(ds, i) === expId) count++;
+  }
+  return count;
+}
+
+/**
+ * Tooltip for a spot count in the experiment list. Uses the same
+ * definitions as the Unindexed / Indexed / Integrated buttons
+ * (unindexed = strong and not indexed, as in DIALS). A spot can be in
+ * more than one group, so these need not add up to the total.
+ */
+function _countTooltip(ds, expId) {
+  const d = ds.rawData.data;
+  const n = ds.rawData.points.length;
+  let total = 0, unindexed = 0, indexed = 0, integrated = 0;
+  for (let i = 0; i < n; i++) {
+    if (spotOwner(ds, i) !== expId) continue;
+    total++;
+    const ix = d.indexed_status[i], ig = d.integrated_status[i];
+    if (ix) indexed++;
+    if (ig) integrated++;
+    if (!ix && d.strong_status?.[i]) unindexed++;
+  }
+  const f = v => v.toLocaleString();
+  return `unindexed: ${f(unindexed)}\n`
+    + `indexed: ${f(indexed)}\n`
+    + `integrated: ${f(integrated)}\n`
+    + `total: ${f(total)}`;
+}
+
 function _circleStyle(hex, opacity) {
   if (opacity >= 1.0) return hex;
   const r = parseInt(hex.slice(1, 3), 16);
@@ -435,8 +470,9 @@ export function buildExpList() {
         firstExpId = expId;
       }
 
-      const count = data.id
-        .filter(x => x === expId).length;
+      // All spots of this experiment, including spots in no lattice
+      // (id -1) on its images: the same spots its switch shows and hides.
+      const count = _ownedCount(ds, expId);
       const labelKey =
         `${ds.id}:${expId}`;
       const colorId =
@@ -479,6 +515,8 @@ export function buildExpList() {
           class="exp-radio"
           name="active-exp">
         <div class="exp-color-circle"></div>
+        <div class="exp-color-circle exp-unidx-circle"
+          title="Colour of unindexed spots"></div>
         <span class="exp-label"></span>
         <input type="text"
           class="exp-user-label"
@@ -498,6 +536,10 @@ export function buildExpList() {
       row.querySelector('.exp-user-label').value = savedLabel;
       row.querySelector('.exp-count').textContent =
         count.toLocaleString();
+      row.querySelector('.exp-count').title =
+        _countTooltip(ds, expId);
+      row.querySelector('.exp-unidx-circle').style.background =
+        unindexedColorOf(ds, expId);
       list.appendChild(row);
 
       row.querySelector('.exp-remove')
@@ -578,6 +620,22 @@ export function buildExpList() {
             recolour();
             applyFilters();
           });
+      });
+
+      // Colour of this experiment's unindexed spots (default white).
+      const unidxEl =
+        row.querySelector('.exp-unidx-circle');
+      unidxEl.addEventListener('click', e => {
+        e.stopPropagation();
+        showColorPicker(
+          unidxEl, unindexedColorOf(ds, expId), 1.0,
+          hex => {
+            setUnindexedColor(ds.id, expId, hex);
+            unidxEl.style.background = hex;
+            recolour();
+            applyFilters();
+          },
+          { opacity: false });
       });
     }
   }

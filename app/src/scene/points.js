@@ -16,7 +16,7 @@
 
 import * as THREE from 'three';
 import { store } from '../state/store.js';
-import { expColor }
+import { spotColor, spotOwner }
   from '../filters/colors.js';
 
 const VERT = `
@@ -51,16 +51,8 @@ const FRAG = `
  * Returns THREE.Points (caller adds to
  * scene via renderer.setPointsObject).
  */
-/** The size set by the Spot size slider (2 if there is no slider). */
-function currentPointSize() {
-  const v = Number(
-    document.getElementById('filt-point-size')?.value);
-  return v > 0 ? v : 3;
-}
-
-
 export function buildPointCloud(
-  pointSize = currentPointSize()
+  pointSize = 5.0
 ) {
   // Merge all datasets
   const allPts  = [];
@@ -130,7 +122,7 @@ export function applyVisibility(
     const ids = ds.rawData.data.id;
     for (let i = 0; i < ids.length; i++) {
       if (visibleSet[g]) {
-        const key = `${ds.id}:${ids[i]}`;
+        const key = `${ds.id}:${spotOwner(ds, i)}`;
         attr.array[g] =
           store.expOpacityOverrides[key] ?? 1.0;
       } else {
@@ -188,23 +180,13 @@ export function applySelection(
   let globalIdx = 0;
   for (const ds of store.datasets) {
     const pts       = ds.rawData.points;
-    const ids       = ds.rawData.data.id;
-    const expOffset = ds.expOffset  ?? 0;
-    const colorOff  = ds.colorOffset ?? 0;
     for (let i = 0; i < pts.length; i++) {
       if (selectionSet.has(globalIdx)) {
         attr.setXYZ(
           globalIdx,
           white.r, white.g, white.b);
       } else {
-        const expId  = ids[i];
-        const key    = `${ds.id}:${expId}`;
-        const colorId =
-          colorOff + (expId - expOffset);
-        const hex =
-          store.expColorOverrides[key]
-          ?? expColor(colorId);
-        const c = new THREE.Color(hex);
+        const c = new THREE.Color(spotColor(ds, i));
         attr.setXYZ(
           globalIdx, c.r, c.g, c.b);
       }

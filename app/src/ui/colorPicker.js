@@ -23,7 +23,8 @@ let _anchor  = null;
 let _cleanup = null;
 
 export function showColorPicker(
-  anchorEl, initialHex, initialOpacity, onChange
+  anchorEl, initialHex, initialOpacity, onChange,
+  { opacity: showOpacity = true } = {}
 ) {
   if (_popup && _anchor === anchorEl) {
     _destroy(); return;
@@ -61,6 +62,12 @@ export function showColorPicker(
       <input class="cp-opacity-num" type="number"
         min="0" max="100" step="1" title="Opacity %">
     </div>`;
+
+  // Colour only (e.g. the unindexed-spot colour): no opacity controls.
+  if (!showOpacity) {
+    _popup.querySelector('.cp-opacity-wrap').style.display = 'none';
+    _popup.querySelector('.cp-opacity-num').style.display = 'none';
+  }
 
   document.body.appendChild(_popup);
 

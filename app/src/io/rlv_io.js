@@ -12,11 +12,11 @@
  */
 
 import * as THREE from 'three';
-import { expColor }
+import { expColor, UNINDEXED_COLOR }
   from '../filters/colors.js';
 
 const COLOR_UNINDEXED =
-  new THREE.Color('#888888');
+  new THREE.Color(UNINDEXED_COLOR);
 
 export const SCALE = 1000.0;
 
@@ -80,6 +80,10 @@ export function buildRLV(
 
   const meta = {
     id:    new Int32Array(n),
+    // Experiment the spot belongs to for colour and show/hide: its own
+    // experiment, or for spots in no lattice (id -1) the experiment of
+    // their images. Always >= 0.
+    owner: new Int32Array(n),
     panel: new Uint32Array(n),
     x:     new Float32Array(n),
     y:     new Float32Array(n),
@@ -88,6 +92,7 @@ export function buildRLV(
     k:     new Int32Array(n),
     l:     new Int32Array(n),
     indexed_status:    new Uint8Array(n),
+    strong_status:     new Uint8Array(n),
     integrated_status: new Uint8Array(n),
     d_spacing: new Float32Array(n),
     intensity: new Float32Array(n),
@@ -139,23 +144,30 @@ export function buildRLV(
     const integrated =
       reflParser.isSummationIntegrated(flag)
       || reflParser.isPrfIntegrated(flag);
+    // DIALS flag "strong" (1 << 5): found by spot finding.
+    const strong = (flag & (1 << 5)) !== 0;
 
     groups[i] = integrated
       ? 'integrated'
       : indexed ? 'indexed' : 'unindexed';
 
-    // Color by experiment
+    // Color by experiment; spots in no lattice (id -1) white, as in the
+    // DIALS viewer (colors.js recolours everything right after loading,
+    // this is only the first colour).
     const col = exptID >= 0
-      ? new THREE.Color(expColor(exptID))
+      ? new THREE.Color(expColor(modelExpt))
       : COLOR_UNINDEXED;
     colors[i*3]   = col.r;
     colors[i*3+1] = col.g;
     colors[i*3+2] = col.b;
 
     meta.id[i]    = exptID;
+    meta.owner[i] = modelExpt;
     meta.panel[i] = panelIdx;
     meta.indexed_status[i] =
       indexed ? 1 : 0;
+    meta.strong_status[i] =
+      strong ? 1 : 0;
     meta.integrated_status[i] =
       integrated ? 1 : 0;
 
@@ -731,6 +743,7 @@ export function rlvToViewerFormat(rlvData) {
 
   const data = {
     id:    Array.from(meta.id),
+    owner: Array.from(meta.owner),
     panel: Array.from(meta.panel),
     x:     Array.from(meta.x),
     y:     Array.from(meta.y),
@@ -749,9 +762,14 @@ export function rlvToViewerFormat(rlvData) {
         .map(v => v === 1),
     outlier_status:
       new Array(n).fill(false),
+    strong_status:
+      Array.from(meta.strong_status)
+        .map(v => v === 1),
+    // Unindexed as in the DIALS viewer: found by spot finding (strong)
+    // but not indexed.
     unindexed_status:
       Array.from(meta.indexed_status)
-        .map(v => v === 0),
+        .map((v, i) => v === 0 && meta.strong_status[i] === 1),
     px_count: meta.px_count
       ? Array.from(meta.px_count)
       : null,

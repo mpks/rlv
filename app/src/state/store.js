@@ -35,6 +35,12 @@ export const store = {
   // value: '#rrggbb'
   expColorOverrides: {},
 
+  // ── Per-experiment colour of unindexed spots ─
+  // (neither indexed nor integrated; default white)
+  // key: `${datasetId}:${expId}`
+  // value: '#rrggbb'
+  unindexedColorOverrides: {},
+
   // ── Per-experiment opacity overrides ─
   // key: `${datasetId}:${expId}`
   // value: 0.0–1.0 (default 1.0)
@@ -132,6 +138,11 @@ export function addDataset(
       rawData.data.id[i] += expOffset;
     }
   }
+  // Same for the experiment each spot belongs to (see rlv_io.js).
+  const owner = rawData.data.owner;
+  if (owner) {
+    for (let i = 0; i < owner.length; i++) owner[i] += expOffset;
+  }
 
   const id = store._nextDatasetId++;
   const colorOffset = store._nextColorIndex;
@@ -166,6 +177,7 @@ export function removeDataset(id) {
   // Clean up colour/opacity overrides and labels
   for (const obj of [
     store.expColorOverrides,
+    store.unindexedColorOverrides,
     store.expOpacityOverrides,
     store.expLabels,
   ]) {
@@ -197,6 +209,7 @@ export function clearDatasets() {
   store._nextDatasetId = 0;
   store._nextColorIndex = 0;
   store.expColorOverrides = {};
+  store.unindexedColorOverrides = {};
   store.expOpacityOverrides = {};
   store.filters.visibleExpts.clear();
   store.invertedExpts.clear();
@@ -265,6 +278,15 @@ export function setExpColor(
 ) {
   const key = `${datasetId}:${expId}`;
   store.expColorOverrides[key] = hex;
+  emit('colors-changed', { datasetId, expId, hex });
+}
+
+/** Colour of the unindexed spots of one experiment. */
+export function setUnindexedColor(
+  datasetId, expId, hex
+) {
+  const key = `${datasetId}:${expId}`;
+  store.unindexedColorOverrides[key] = hex;
   emit('colors-changed', { datasetId, expId, hex });
 }
 

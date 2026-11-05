@@ -15,6 +15,45 @@ import {
   getPointsObject,
 } from '../scene/renderer.js';
 
+/**
+ * Default colour of spots in no lattice (experiment id -1): white, as in
+ * the DIALS viewer. Each experiment can change it with the second circle
+ * in its row of the experiment list (for the id -1 spots on its images).
+ * As in DIALS, spots that are merely not indexed yet (e.g. strong.refl,
+ * before indexing) keep their experiment's colour.
+ */
+export const UNINDEXED_COLOR = '#ffffff';
+
+/** Experiment a spot belongs to for colour and show/hide (always >= 0). */
+export function spotOwner(ds, i) {
+  return ds.rawData.data.owner?.[i] ?? ds.rawData.data.id[i];
+}
+
+/** True if spot i belongs to no lattice (experiment id -1). */
+export function isUnindexed(ds, i) {
+  return ds.rawData.data.id[i] < 0;
+}
+
+/** Colour ('#rrggbb') of experiment expId's indexed/integrated spots. */
+export function expColorOf(ds, expId) {
+  return store.expColorOverrides[`${ds.id}:${expId}`]
+    ?? expColor((ds.colorOffset ?? 0) + (expId - (ds.expOffset ?? 0)));
+}
+
+/** Colour ('#rrggbb') of experiment expId's unindexed spots. */
+export function unindexedColorOf(ds, expId) {
+  return store.unindexedColorOverrides[`${ds.id}:${expId}`]
+    ?? UNINDEXED_COLOR;
+}
+
+/** Colour ('#rrggbb') of spot i of dataset ds in "experiment" mode. */
+export function spotColor(ds, i) {
+  const expId = spotOwner(ds, i);
+  return isUnindexed(ds, i)
+    ? unindexedColorOf(ds, expId)
+    : expColorOf(ds, expId);
+}
+
 // Golden-ratio hue spacing: maximally
 // distinct color for any experiment id,
 // no palette limit.
@@ -50,17 +89,8 @@ export function recolour() {
 // ── Colour modes ──────────────────────────
 
 export function recolourByExperiment() {
-  _recolour((_ds, i) => {
-    const expId = _ds.rawData.data.id[i];
-    const key = `${_ds.id}:${expId}`;
-    const colorId =
-      (_ds.colorOffset ?? 0)
-      + (expId - (_ds.expOffset ?? 0));
-    const hex =
-      store.expColorOverrides[key]
-      ?? expColor(colorId);
-    return new THREE.Color(hex);
-  });
+  _recolour((_ds, i) =>
+    new THREE.Color(spotColor(_ds, i)));
 }
 
 export function recolourByResolution() {

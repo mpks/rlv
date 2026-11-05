@@ -21,7 +21,7 @@ import {
 } from './renderer.js';
 import { SCALE } from '../io/rlv_io.js';
 import { store } from '../state/store.js';
-import { expColor, recolour }
+import { spotColor, recolour }
   from '../filters/colors.js';
 
 let _sphere   = null;
@@ -131,25 +131,15 @@ function _applyHighlight() {
 
   let g = 0;
   for (const ds of store.datasets) {
-    const ids  = ds.rawData.data.id;
     const dArr = ds.rawData.data.d_spacing;
     const n    = ds.rawData.points.length;
-    const expOffset = ds.expOffset  ?? 0;
-    const colorOff  = ds.colorOffset ?? 0;
     for (let i = 0; i < n; i++) {
       // inside sphere = d_spacing > _d (lower res)
       if (dArr[i] > _d) {
         attr.setXYZ(g,
           _INSIDE.r, _INSIDE.g, _INSIDE.b);
       } else {
-        const expId  = ids[i];
-        const key    = `${ds.id}:${expId}`;
-        const colorId =
-          colorOff + (expId - expOffset);
-        const hex =
-          store.expColorOverrides[key]
-          ?? expColor(colorId);
-        const base = new THREE.Color(hex);
+        const base = new THREE.Color(spotColor(ds, i));
         attr.setXYZ(g, base.r, base.g, base.b);
       }
       g++;
@@ -216,4 +206,3 @@ function _updateLabelPosition() {
   _label.style.transform =
     `translate(${lx}px,${ly}px)`;
 }
-
