@@ -32,9 +32,21 @@ _raycaster.params.Points.threshold = 15;
 const _mouse = new THREE.Vector2();
 let   _enabled = true;
 
+// Where the mouse button went down. Browsers also send a "click" at the
+// end of a drag (rotating, panning, rolling); a click that moved more
+// than this many pixels is a drag and must not change the selection.
+const _CLICK_MAX_MOVE_PX = 4;
+let _downX = 0;
+let _downY = 0;
+
 // ── Init ──────────────────────────────────
 
 export function initSelection() {
+  renderer.domElement.addEventListener(
+    'pointerdown', e => {
+      _downX = e.clientX;
+      _downY = e.clientY;
+    });
   renderer.domElement.addEventListener(
     'click', _onClick);
   renderer.domElement.addEventListener(
@@ -69,6 +81,9 @@ function _onMouseMove(e) {
 
 function _onClick(e) {
   if (!_enabled) return;
+  // The end of a drag, not a click.
+  if (Math.hypot(e.clientX - _downX, e.clientY - _downY)
+      > _CLICK_MAX_MOVE_PX) return;
   const obj = getPointsObject();
   if (!obj) return;
 

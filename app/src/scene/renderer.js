@@ -64,6 +64,9 @@ export function initRenderer() {
   renderer.domElement.addEventListener(
     'wheel', _onWheel,
     { passive: false });
+
+  // Shift + drag: roll the view (turn it around the screen axis).
+  _initRoll();
   window.addEventListener(
     'resize', onResize);
 
@@ -209,6 +212,49 @@ export function alignToVector(vArray) {
 }
 
 // ── Resize + zoom ─────────────────────────
+
+// ── Roll: Shift + drag ────────────────────
+
+// Dragging 1 pixel sideways turns the view by 0.5°.
+const _ROLL_RADS_PER_PX = Math.PI / 360;
+let _rollLastX = null;
+
+function _initRoll() {
+  const el = renderer.domElement;
+  // Capture phase: runs before TrackballControls' own pointerdown
+  // handler, which then ignores this drag (controls.enabled = false).
+  el.addEventListener('pointerdown', e => {
+    if (!e.shiftKey || e.button !== 0) return;
+    _rollLastX = e.clientX;
+    controls.enabled = false;
+    el.setPointerCapture?.(e.pointerId);
+  }, { capture: true });
+  el.addEventListener('pointermove', e => {
+    if (_rollLastX === null) return;
+    rollView((e.clientX - _rollLastX) * _ROLL_RADS_PER_PX);
+    _rollLastX = e.clientX;
+  });
+  const end = e => {
+    if (_rollLastX === null) return;
+    _rollLastX = null;
+    controls.enabled = true;
+    el.releasePointerCapture?.(e.pointerId);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+/**
+ * Turn the view by `angle` radians around the viewing direction, like
+ * turning a photo on a table. Positive = the picture turns clockwise.
+ */
+export function rollView(angle) {
+  const toViewer = new THREE.Vector3()
+    .subVectors(camera.position, controls.target)
+    .normalize();
+  camera.up.applyAxisAngle(toViewer, angle).normalize();
+  camera.lookAt(controls.target);
+}
 
 export function onResize() {
   if (!renderer) return;
