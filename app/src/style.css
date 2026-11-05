@@ -662,6 +662,12 @@ select {
 
 .tbtn:hover { background: #1e1e2e; }
 
+/* A link styled like the toolbar buttons ("Get the app") */
+.tbtn-link {
+  text-decoration: none;
+  display: inline-block;
+}
+
 .tbtn-label {
   font-size: 11px;
   color: #555;

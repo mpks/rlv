@@ -34,6 +34,9 @@ const ZOOM_KEY = 'rlv.zoom';
 export async function initDesktop(onLoad) {
   if (!isDesktop) return;
 
+  // Already in the app: no "Get the app" link.
+  document.getElementById('btn-get-app')?.remove();
+
   // Loaded only in the app; in a browser these modules are never used.
   const { invoke } = await import('@tauri-apps/api/core');
   const { getCurrentWebview } = await import('@tauri-apps/api/webview');
