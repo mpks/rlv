@@ -16,7 +16,7 @@
 
 import * as THREE from 'three';
 import { store } from '../state/store.js';
-import { spotColor, spotOwner }
+import { displayColor, spotOwner, spotOpacityFactor }
   from '../filters/colors.js';
 
 const VERT = `
@@ -123,8 +123,11 @@ export function applyVisibility(
     for (let i = 0; i < ids.length; i++) {
       if (visibleSet[g]) {
         const key = `${ds.id}:${spotOwner(ds, i)}`;
+        // Experiment opacity (first circle) times the "Integrated, not
+        // indexed" slider for predicted-only spots.
         attr.array[g] =
-          store.expOpacityOverrides[key] ?? 1.0;
+          (store.expOpacityOverrides[key] ?? 1.0)
+          * spotOpacityFactor(ds, i);
       } else {
         attr.array[g] = 0.0;
       }
@@ -186,7 +189,7 @@ export function applySelection(
           globalIdx,
           white.r, white.g, white.b);
       } else {
-        const c = new THREE.Color(spotColor(ds, i));
+        const c = new THREE.Color(displayColor(ds, i));
         attr.setXYZ(
           globalIdx, c.r, c.g, c.b);
       }

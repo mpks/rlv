@@ -83,6 +83,12 @@ export const store = {
     colorMode:      'experiment',
   },
 
+  // Opacity (0-1) of spots that are integrated but not indexed, i.e.
+  // predicted positions that spot finding did not find. Multiplies the
+  // experiment's own opacity. 0 hides them. ("Integrated, not indexed"
+  // slider in the View section.)
+  integratedOpacity: 0.4,
+
   // ── Derived (written by filters.js) ─
   // Uint8Array, length = total spots,
   // 1 = visible, 0 = hidden

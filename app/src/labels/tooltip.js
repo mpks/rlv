@@ -185,7 +185,14 @@ function _buildInfo(ds, i, gIdx) {
     `${d.x?.[i]?.toFixed(1)}`
     + ` ${d.y?.[i]?.toFixed(1)}`
     + ` ${d.z?.[i]?.toFixed(1)}`]);
-  rows.push(['exp', `${ds.id}:${d.id?.[i]}`]);
+  // Same numbering as the experiment list: dataset id, then the
+  // experiment's number within that dataset. (d.id holds a number unique
+  // across all loaded datasets, offset by ds.expOffset.) Spots in no
+  // lattice (id -1) show the experiment whose row colours and toggles them.
+  const off = ds.expOffset ?? 0;
+  rows.push(['exp', d.id?.[i] >= 0
+    ? `${ds.id}:${d.id[i] - off}`
+    : `${ds.id}:${(d.owner?.[i] ?? off) - off} (no lattice)`]);
   rows.push(['idx', gIdx]);
 
   if (d.panel?.[i] != null)

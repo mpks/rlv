@@ -334,6 +334,12 @@
          id="section-display">
 
       <div class="row">
+        <label>Colour by</label>
+        <select id="color-mode"
+                title="Colour spots by experiment, or by a value of each spot (all datasets share one colour scale)"></select>
+      </div>
+
+      <div class="row">
         <label>Show in crystal frame</label>
         <div class="toggle"
              id="tog-crystal-frame"></div>
@@ -355,6 +361,19 @@
                id="point-size-num"
                min="1" max="20"
                step="0.5" value="3">
+      </div>
+
+      <div class="row">
+        <label title="Opacity of spots that were integrated but not indexed (predicted positions). Lower it to make the indexed (found) spots stand out; 0 hides them.">Integrated, not indexed</label>
+        <input type="range"
+               id="integ-opacity"
+               min="0" max="100"
+               step="5" value="40">
+        <input type="number"
+               id="integ-opacity-num"
+               min="0" max="100"
+               step="5" value="40"
+               title="Opacity in %">
       </div>
 
     </div><!-- /section-view -->
@@ -398,6 +417,7 @@
 <!-- ── Canvas ──────────────────────── -->
 <div id="canvas-wrap">
   <div id="loading">Drag .expt and .refl files here, or click Open</div>
+  <div id="version-label"></div>
   <div id="inspection-label"></div>
   <div id="tooltip">
     <div class="hkl" id="tt-hkl"></div>

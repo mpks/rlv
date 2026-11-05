@@ -21,7 +21,7 @@ import {
 } from './renderer.js';
 import { SCALE } from '../io/rlv_io.js';
 import { store } from '../state/store.js';
-import { spotColor, recolour }
+import { displayColor, recolour }
   from '../filters/colors.js';
 
 let _sphere   = null;
@@ -139,7 +139,7 @@ function _applyHighlight() {
         attr.setXYZ(g,
           _INSIDE.r, _INSIDE.g, _INSIDE.b);
       } else {
-        const base = new THREE.Color(spotColor(ds, i));
+        const base = new THREE.Color(displayColor(ds, i));
         attr.setXYZ(g, base.r, base.g, base.b);
       }
       g++;

@@ -41,6 +41,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # full history and tags, for the version label (git describe)
 
       - name: Install Linux build dependencies
         if: startsWith(matrix.platform, 'ubuntu')
@@ -82,6 +84,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Version label in the app; the step above edits a file, so
+          # git describe would add "-dirty".
+          RLV_VERSION: ${{ github.ref_name }}
         with:
           projectPath: app
           args: ${{ matrix.args }}

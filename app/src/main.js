@@ -66,6 +66,8 @@ import { loadFromQuery }
   from './io/urlLoad.js';
 import { initDesktop }
   from './platform/desktop.js';
+import { initColorLegend }
+  from './ui/colorLegend.js';
 import {
   showLoading,
   hideLoading,
@@ -141,6 +143,13 @@ onChange('colors-changed', () => {
 
 // ── Boot ──────────────────────────────────
 
+// Version in the corner of the 3D view (set at build time, vite.config.js).
+const versionEl = document.getElementById('version-label');
+if (versionEl) {
+  versionEl.textContent =
+    `RLV ${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'}`;
+}
+
 initRenderer();
 startRenderLoop();
 initOverlays();
@@ -155,6 +164,7 @@ initDesktop(loadFiles); // desktop app only; no-op in a browser
 initSelection();
 initTooltip();
 initHKLLabels();
+initColorLegend();
 
 // Load files named in the address (?expt=…&refl=…), if any.
 loadFromQuery(loadFiles);

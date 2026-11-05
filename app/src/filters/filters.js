@@ -10,7 +10,7 @@
  */
 
 import { store } from '../state/store.js';
-import { spotOwner } from './colors.js';
+import { spotOwner, isIntegratedOnly } from './colors.js';
 import {
   getPointsObject,
 } from '../scene/renderer.js';
@@ -52,6 +52,13 @@ export function applyFilters() {
 
       // Experiment visibility
       if (!f.visibleExpts.has(expKey)) {
+        globalIdx++;
+        continue;
+      }
+
+      // "Integrated, not indexed" slider at 0: hidden, so they are not
+      // hovered or selected either.
+      if (store.integratedOpacity === 0 && isIntegratedOnly(ds, i)) {
         globalIdx++;
         continue;
       }

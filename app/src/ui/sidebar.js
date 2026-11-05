@@ -23,7 +23,7 @@ import {
   setHKLLabelSize,
   rebuildHKLLabels,
 } from '../labels/hklLabels.js';
-import { expColor, spotOwner, unindexedColorOf }
+import { expColor, spotOwner, unindexedColorOf, COLOR_MODES }
   from '../filters/colors.js';
 import {
   setDMin, setDMax,
@@ -214,6 +214,7 @@ export function initFilterPanel() {
   _wireRadioGroup('show-group', setShowMode);
 
 
+
   // Overlay toggles
   _wireOverlayToggle(
     'tog-axis',   'rotAxis');
@@ -322,6 +323,32 @@ export function initFilterPanel() {
   _syncSlider(
     'filt-point-size', 'point-size-num',
     v => setPointSize(getPointsObject(), v));
+
+  // Colour by: experiment, or a quantity of each spot (one shared scale
+  // for all datasets; experiment colours are kept for switching back)
+  const modeSel = document.getElementById('color-mode');
+  if (modeSel) {
+    for (const m of COLOR_MODES) {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = m.label;
+      modeSel.appendChild(o);
+    }
+    modeSel.value = store.filters.colorMode;
+    modeSel.addEventListener('change', () => {
+      store.filters.colorMode = modeSel.value;
+      recolour();
+      applyFilters();
+    });
+  }
+
+  // Opacity of integrated-but-not-indexed spots (predicted positions)
+  _syncSlider(
+    'integ-opacity', 'integ-opacity-num',
+    v => {
+      store.integratedOpacity = v / 100;
+      applyFilters();
+    });
 
 }
 

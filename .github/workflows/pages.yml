@@ -24,6 +24,8 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # full history and tags, for the version label (git describe)
 
       - uses: actions/setup-node@v5
         with:
