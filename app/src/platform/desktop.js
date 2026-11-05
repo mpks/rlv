@@ -13,6 +13,8 @@
  *    they are read and passed to the same handler the web page uses.
  *  - Zoom: Ctrl + scroll and Ctrl +/−/0 zoom the whole interface, as in a
  *    browser. The level is remembered.
+ *  - Remote…: open .expt/.refl files from another machine over SSH
+ *    (platform/remote.js and src-tauri/src/remote.rs).
  *
  * Files are read by the app's `read_file` command (src-tauri/src/lib.rs).
  */
@@ -28,7 +30,8 @@ export const isDesktop =
 const LAST_DIR_KEY = 'rlv.lastDir';
 const ZOOM_KEY = 'rlv.zoom';
 
-export async function initDesktop() {
+/** onLoad(exptFile, reflFile, mode): the loader used by the Open dialog. */
+export async function initDesktop(onLoad) {
   if (!isDesktop) return;
 
   // Loaded only in the app; in a browser these modules are never used.
@@ -126,6 +129,11 @@ export async function initDesktop() {
     e.preventDefault();
     if (e.deltaY < 0) zoomIn(); else if (e.deltaY > 0) zoomOut();
   }, { passive: false });
+
+  // ── Remote files over SSH ───────────────────────────────────
+
+  const { initRemote } = await import('./remote.js');
+  initRemote(invoke, onLoad);
 }
 
 // ── Helpers ───────────────────────────────────────────────────

@@ -2,7 +2,9 @@
 // (app/dist/index.html) as the web version. The page's
 // src/platform/desktop.js uses the pieces below to replace browser
 // features that work poorly in the Linux web engine (file chooser,
-// drag-and-drop, page zoom).
+// drag-and-drop, page zoom), and add opening files over SSH (remote.rs).
+
+mod remote;
 
 /// Read a file chosen in the native dialog or dropped on the window and
 /// return its raw bytes (arrives in JavaScript as an ArrayBuffer).
@@ -17,7 +19,12 @@ fn read_file(path: String) -> Result<tauri::ipc::Response, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![read_file])
+        .invoke_handler(tauri::generate_handler![
+            read_file,
+            remote::remote_hosts,
+            remote::remote_list,
+            remote::remote_read,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running RLV");
 }

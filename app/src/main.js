@@ -151,7 +151,7 @@ initFilterPanel();
 initToolsPanel();
 initDialog(loadFiles);
 initDropZone(loadFiles);
-initDesktop();          // desktop app only; no-op in a browser
+initDesktop(loadFiles); // desktop app only; no-op in a browser
 initSelection();
 initTooltip();
 initHKLLabels();
