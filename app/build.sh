@@ -31,7 +31,8 @@ case "$(node -v)" in
   *) echo "Node $(node -v) is too old for Vite: need Node 22 (nvm install 22)"; exit 1 ;;
 esac
 
-# Same as CI: install exactly what package-lock.json says, without changing it.
+# Same as CI: install exactly what package-lock.json says,
+# without changing it.
 npm ci
 npm run build
 
