@@ -47,6 +47,7 @@ import {
 import {
   getPointsObject,
   setPointsObject,
+  setPivotFollowsPan,
 } from '../scene/renderer.js';
 import {
   initInspectionSphere,
@@ -224,6 +225,16 @@ export function initFilterPanel() {
     'tog-beam',   'beam');
   _wireOverlayToggle(
     'tog-exp-info', 'expInfo');
+  _wireOverlayToggle(
+    'tog-rot-centre', 'rotCentre');
+  _wireOverlayToggle(
+    'tog-axis-gizmo', 'axisGizmo');
+
+  // Rotation centre: fixed in the scene (off) or the middle of the
+  // screen, moving with panning (on)
+  const togFollow = document.getElementById('tog-pivot-follows');
+  togFollow?.addEventListener('click', () =>
+    setPivotFollowsPan(togFollow.classList.contains('on')));
 
   // Crystal frame toggle (global recompute)
   const togCF = document.getElementById(

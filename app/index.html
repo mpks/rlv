@@ -284,6 +284,16 @@
         <div class="toggle on"
              id="tog-exp-info"></div>
       </div>
+      <div class="row">
+        <label title="Red cross in the middle of the view: the point the view rotates around. Double-click a spot to move it there; click the green dot for the origin.">Rotation centre</label>
+        <div class="toggle"
+             id="tog-rot-centre"></div>
+      </div>
+      <div class="row">
+        <label title="Lab x, y, z axes in the top-left corner. Drag to rotate the view; click an axis to look along it.">Axis gizmo</label>
+        <div class="toggle on"
+             id="tog-axis-gizmo"></div>
+      </div>
 
     </div><!-- /section-overlays -->
 
@@ -337,6 +347,12 @@
         <label>Colour by</label>
         <select id="color-mode"
                 title="Colour spots by experiment, or by a value of each spot (all datasets share one colour scale)"></select>
+      </div>
+
+      <div class="row">
+        <label title="On: the rotation centre is always the middle of the screen and moves when you pan. Off: it stays on the point you chose (double-click a spot, or the green dot for the origin).">Rotation centre follows pan</label>
+        <div class="toggle"
+             id="tog-pivot-follows"></div>
       </div>
 
       <div class="row">
@@ -434,6 +450,9 @@
   <button class="tbtn" id="btn-align-astar">a*</button>
   <button class="tbtn" id="btn-align-bstar">b*</button>
   <button class="tbtn" id="btn-align-cstar">c*</button>
+  <span class="tbtn-label" style="margin-left:10px">Centre:</span>
+  <button class="tbtn" id="btn-centre-origin"
+          title="Rotate around the origin (0, 0, 0). Double-click a spot to rotate around it.">origin</button>
   <div style="flex:1"></div>
   <button class="tbtn" id="btn-spin">Spin</button>
   <button class="tbtn" id="btn-fullscreen"
@@ -481,8 +500,9 @@
   </span>
   <span id="status-count"></span>
   <span>
-    Drag to rotate · Shift+drag to roll ·
-    Scroll to zoom · Right-drag to pan
+    Drag: rotate · Shift+drag: roll · Right-drag: pan ·
+    Scroll / W S: zoom · A D Q E: move ·
+    Double-click: rotate around spot
   </span>
 </div>
 

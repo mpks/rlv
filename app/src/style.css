@@ -682,6 +682,32 @@ select {
 }
 
 /* ── Canvas ──────────────────────────── */
+/* Axis gizmo, top-left corner of the 3D view */
+#axis-gizmo {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  /* override the global "canvas { width: 100% !important }" rule */
+  width: 96px !important;
+  height: 96px !important;
+}
+
+/* Rotation centre: a red cross in the middle of the view */
+#rotation-centre {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    linear-gradient(#ff4040, #ff4040) center / 18px 3px no-repeat,
+    linear-gradient(#ff4040, #ff4040) center / 3px 18px no-repeat;
+}
+
 /* Colour-by legend, top-right corner of the 3D view */
 #color-legend {
   display: none;

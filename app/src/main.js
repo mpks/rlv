@@ -35,6 +35,8 @@ import { applyFilters }
 import { recolour }
   from './filters/colors.js';
 
+import { initNavigation }
+  from './scene/navigation.js';
 import { initSelection }
   from './selection/selection.js';
 
@@ -162,6 +164,7 @@ initDialog(loadFiles);
 initDropZone(loadFiles);
 initDesktop(loadFiles); // desktop app only; no-op in a browser
 initSelection();
+initNavigation();
 initTooltip();
 initHKLLabels();
 initColorLegend();

@@ -111,6 +111,8 @@ export const store = {
     rotAxis:      true,
     scanAnim:     false,
     expInfo:      true,
+    rotCentre:    false,
+    axisGizmo:    true,
     crystalFrame: false,
   },
 

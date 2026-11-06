@@ -21,14 +21,51 @@ export let camera   = null;
 export let renderer = null;
 export let controls = null;
 
+/**
+ * Rotation centre ("pivot"): a fixed point in the scene that all rotation
+ * turns around (dragging, the gizmo, Spin, Shift+drag roll). Panning and
+ * zooming move the view but not the pivot. controls.target is only the
+ * middle of the screen. Default: the origin. Change it with setPivot().
+ */
+export const pivot = new THREE.Vector3();
+
+/** Make `p` (scene coordinates) the rotation centre. The view doesn't move. */
+export function setPivot(p) {
+  pivot.copy(p);
+}
+
+/**
+ * If true, the rotation centre is always the middle of the screen and
+ * moves when the view is panned (TrackballControls' own behaviour).
+ * If false (default), it stays fixed in the scene.
+ */
+let _pivotFollowsPan = false;
+
+export function setPivotFollowsPan(on) {
+  _pivotFollowsPan = on;
+  if (on) pivot.copy(controls.target);
+}
+
+/**
+ * Rotate the whole view by quaternion `q` (a world-space rotation) around
+ * the pivot: camera position, view centre and "up" all turn together, so
+ * the pivot stays where it is on screen.
+ */
+export function rotateAroundPivot(q) {
+  camera.position.sub(pivot).applyQuaternion(q).add(pivot);
+  controls.target.sub(pivot).applyQuaternion(q).add(pivot);
+  camera.up.applyQuaternion(q).normalize();
+  camera.lookAt(controls.target);
+}
+
 let _pointsObject   = null;
 let _orthoZoom      = 1.0;
 let _running        = false;
 const _frameCallbacks = [];
+const _frameStartCallbacks = [];
 
 let _spinning       = false;
 let _lastSpinTime   = null;
-let _spinAxis       = new THREE.Vector3(0, 1, 0);
 const _SPIN_RADS_PER_SEC = (1.75 / 60) * 2 * Math.PI; // 1.75 RPM
 
 // ── Init ──────────────────────────────────
@@ -123,6 +160,18 @@ export function startRenderLoop() {
   _loop();
 }
 
+/** fn() runs at the start of every frame, before the controls update. */
+export function onFrameStart(fn) {
+  _frameStartCallbacks.push(fn);
+}
+
+/** Zoom by `factor` (> 1 zooms in), like the scroll wheel. */
+export function zoomBy(factor) {
+  _orthoZoom = Math.max(0.01,
+    Math.min(200, _orthoZoom * factor));
+  _syncOrtho();
+}
+
 export function addFrameCallback(fn) {
   _frameCallbacks.push(fn);
 }
@@ -130,24 +179,40 @@ export function addFrameCallback(fn) {
 export function setSpin(on) {
   _spinning = on;
   _lastSpinTime = null;
-  if (on && camera)
-    _spinAxis = camera.up.clone().normalize();
 }
 
 function _loop() {
   requestAnimationFrame(_loop);
+  // Camera moves (keys, glides) first, so the controls see them.
+  for (const fn of _frameStartCallbacks) fn();
+
+  // TrackballControls rotates around the middle of the screen
+  // (controls.target). Measure the rotation it applied this frame and
+  // move the view so the same rotation happens around the pivot instead.
+  if (_pivotFollowsPan) pivot.copy(controls.target);
+  const qBefore = camera.quaternion.clone();
   controls.update();
+  const dq = camera.quaternion.clone().multiply(qBefore.invert());
+  if (1 - Math.abs(dq.w) > 1e-12) {
+    const t = controls.target;
+    const tWanted = t.clone().sub(pivot).applyQuaternion(dq).add(pivot);
+    const shift = tWanted.sub(t);
+    t.add(shift);
+    camera.position.add(shift);
+  }
   if (_spinning) {
     const now = performance.now();
     if (_lastSpinTime !== null) {
       const dt = Math.min(
         (now - _lastSpinTime) / 1000, 0.1);
       const angle = _SPIN_RADS_PER_SEC * dt;
-      const q = new THREE.Quaternion()
-        .setFromAxisAngle(_spinAxis, angle);
-      camera.position.applyQuaternion(q);
-      controls.target.applyQuaternion(q);
-      camera.lookAt(controls.target);
+      // Turn around the screen's current vertical, through the pivot.
+      // Taken fresh every frame, so rotating the view while spinning
+      // changes the spin axis with it.
+      const screenUp = new THREE.Vector3(0, 1, 0)
+        .applyQuaternion(camera.quaternion);
+      rotateAroundPivot(new THREE.Quaternion()
+        .setFromAxisAngle(screenUp, angle));
     }
     _lastSpinTime = now;
   }
@@ -186,10 +251,11 @@ export function fitCamera() {
   bbox.getCenter(center);
   const size = bbox.getSize(
     new THREE.Vector3()).length();
-  controls.target.copy(center);
-  camera.position.copy(center)
-    .add(new THREE.Vector3(
-      0, 0, size * 2));
+  // Rotate around the origin (the green dot) by default, with the view
+  // centred on it.
+  pivot.set(0, 0, 0);
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, 0, size * 2);
   _orthoZoom = 1.0;
   _syncOrtho();
   controls.update();
@@ -206,8 +272,9 @@ export function alignToVector(vArray) {
   const dist = camera.position
     .distanceTo(controls.target);
 
-  controls.target.set(0, 0, 0);
-  camera.position.copy(v).multiplyScalar(dist);
+  // Look at the rotation centre (pivot), centred on screen.
+  controls.target.copy(pivot);
+  camera.position.copy(v).multiplyScalar(dist).add(pivot);
 
   // Pick an "up" perpendicular to v
   let up = new THREE.Vector3(0, 1, 0);
@@ -263,8 +330,9 @@ export function rollView(angle) {
   const toViewer = new THREE.Vector3()
     .subVectors(camera.position, controls.target)
     .normalize();
-  camera.up.applyAxisAngle(toViewer, angle).normalize();
-  camera.lookAt(controls.target);
+  // Turn around the line of sight through the pivot.
+  rotateAroundPivot(new THREE.Quaternion()
+    .setFromAxisAngle(toViewer, angle));
 }
 
 export function onResize() {
@@ -280,10 +348,7 @@ function _onWheel(e) {
   e.preventDefault();
   const factor = e.deltaY > 0
     ? 1.1 : 0.9;
-  _orthoZoom = Math.max(0.01,
-    Math.min(200,
-      _orthoZoom / factor));
-  _syncOrtho();
+  zoomBy(1 / factor);
 }
 
 function _syncOrtho() {
