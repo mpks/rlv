@@ -105,14 +105,22 @@ export function initToolbar() {
 //   C    crystal frame on / off (same as the sidebar switch)
 //   N/P  next / previous experiment in the list becomes the active one
 //        (wraps around at the ends)
+//   ?    show / hide the list of all shortcuts (Esc closes it)
 // Ignored while typing in a field or while a dialog is open, so Tab still
 // moves between fields there.
 
 function _initShortcuts() {
   window.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if (e.key === 'Escape' && _shortcutsShown()) {
+      _toggleShortcuts(false);
+      return;
+    }
     if (_typingInField(e.target) || _dialogOpen()) return;
-    if (e.key === 'Tab' && !e.shiftKey) {
+    if (e.key === '?') {
+      e.preventDefault();
+      _toggleShortcuts();
+    } else if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault();   // don't move keyboard focus
       document.getElementById('btn-collapse')?.click();
     } else if (e.key === 'o' || e.key === 'O') {
@@ -144,6 +152,75 @@ function _stepActiveExperiment(step) {
   radios[next].click();
   radios[next].closest('.exp-row')
     ?.scrollIntoView({ block: 'nearest' });
+}
+
+// ── Shortcut list ("?") ───────────────────
+
+const SHORTCUTS = [
+  ['Mouse', [
+    ['Drag', 'rotate'],
+    ['Shift + drag', 'roll'],
+    ['Right-drag', 'pan'],
+    ['Scroll', 'zoom'],
+    ['Double-click a spot', 'rotate around it'],
+    ['Click the green dot', 'rotate around the origin'],
+    ['Click a spot', 'select it'],
+    ['Shift / Ctrl + click', 'add to / remove from the selection'],
+    ['Gizmo: drag / click axis', 'rotate / look along that axis'],
+  ]],
+  ['Keys', [
+    ['W / S', 'zoom in / out'],
+    ['A / D', 'move left / right'],
+    ['Q / E', 'move down / up'],
+    ['C', 'crystal frame on / off'],
+    ['N / P', 'next / previous experiment'],
+    ['Tab', 'show / hide the sidebar'],
+    ['O', 'open files'],
+    ['?', 'show / hide this list'],
+  ]],
+  ['Desktop app', [
+    ['Ctrl +  /  −  /  0', 'bigger / smaller / normal text'],
+  ]],
+];
+
+let _shortcutsEl = null;
+
+function _shortcutsShown() {
+  return !!_shortcutsEl && _shortcutsEl.style.display !== 'none';
+}
+
+function _toggleShortcuts(show = !_shortcutsShown()) {
+  if (!_shortcutsEl) {
+    const wrap = document.getElementById('canvas-wrap');
+    if (!wrap) return;
+    _shortcutsEl = document.createElement('div');
+    _shortcutsEl.id = 'shortcuts';
+    const close = document.createElement('button');
+    close.className = 'sc-close';
+    close.textContent = '×';
+    close.title = 'Close (Esc)';
+    close.addEventListener('click', () => _toggleShortcuts(false));
+    _shortcutsEl.appendChild(close);
+    for (const [title, rows] of SHORTCUTS) {
+      const h = document.createElement('div');
+      h.className = 'sc-title';
+      h.textContent = title;
+      _shortcutsEl.appendChild(h);
+      for (const [key, what] of rows) {
+        const row = document.createElement('div');
+        row.className = 'sc-row';
+        const k = document.createElement('span');
+        k.className = 'sc-key';
+        k.textContent = key;
+        const w = document.createElement('span');
+        w.textContent = what;
+        row.append(k, w);
+        _shortcutsEl.appendChild(row);
+      }
+    }
+    wrap.appendChild(_shortcutsEl);
+  }
+  _shortcutsEl.style.display = show ? 'block' : 'none';
 }
 
 function _typingInField(t) {
