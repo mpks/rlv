@@ -105,6 +105,13 @@ export function initToolbar() {
 //   C    crystal frame on / off (same as the sidebar switch)
 //   N/P  next / previous experiment in the list becomes the active one
 //        (wraps around at the ends)
+//   R    spin on / off
+//   F    fullscreen on / off
+//   I    show only indexed spots      (again: all spots)
+//   Shift+I  show only integrated spots  (again: all spots)
+//   U    show only unindexed spots    (again: all spots)
+//   Shift+U  show all spots
+//   T    show / hide the active experiment's spots
 //   ?    show / hide the list of all shortcuts (Esc closes it)
 // Ignored while typing in a field or while a dialog is open, so Tab still
 // moves between fields there.
@@ -132,8 +139,49 @@ function _initShortcuts() {
     } else if ('nNpP'.includes(e.key)) {
       e.preventDefault();
       _stepActiveExperiment(e.key.toLowerCase() === 'n' ? 1 : -1);
+    } else if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      document.getElementById('btn-spin')?.click();
+    } else if (e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      document.getElementById('btn-fullscreen')?.click();
+    } else if (e.key === 'i' || e.key === 'I') {
+      // Shift (not the letter's case) decides, so Caps Lock doesn't matter.
+      e.preventDefault();
+      _toggleShowMode(e.shiftKey ? 'integrated' : 'indexed');
+    } else if (e.key === 't' || e.key === 'T') {
+      e.preventDefault();
+      _toggleActiveExperiment();
+    } else if (e.key === 'u' || e.key === 'U') {
+      e.preventDefault();
+      if (e.shiftKey) _setShowMode('all');
+      else            _toggleShowMode('unindexed');
     }
   });
+}
+
+/**
+ * Select "Show spots: <mode>" in the sidebar, or "All" if <mode> is
+ * already selected. Clicks the radio button, so it behaves exactly like
+ * clicking it.
+ */
+function _toggleShowMode(mode) {
+  const cur = document.querySelector('input[name="show-group"]:checked');
+  _setShowMode(cur?.value === mode ? 'all' : mode);
+}
+
+function _setShowMode(mode) {
+  document.querySelector(`input[name="show-group"][value="${mode}"]`)
+    ?.click();
+}
+
+/**
+ * Click the show/hide switch in the active experiment's row of the
+ * sidebar list (so it behaves exactly like clicking it).
+ */
+function _toggleActiveExperiment() {
+  const radio = document.querySelector('#exp-list .exp-radio:checked');
+  radio?.closest('.exp-row')?.querySelector('.toggle')?.click();
 }
 
 /**
@@ -173,7 +221,14 @@ const SHORTCUTS = [
     ['A / D', 'move left / right'],
     ['Q / E', 'move down / up'],
     ['C', 'crystal frame on / off'],
+    ['R', 'spin on / off'],
+    ['F', 'fullscreen on / off'],
+    ['I', 'only indexed spots / all'],
+    ['Shift + I', 'only integrated spots / all'],
+    ['U', 'only unindexed spots / all'],
+    ['Shift + U', 'all spots'],
     ['N / P', 'next / previous experiment'],
+    ['T', 'show / hide the active experiment'],
     ['Tab', 'show / hide the sidebar'],
     ['O', 'open files'],
     ['?', 'show / hide this list'],
