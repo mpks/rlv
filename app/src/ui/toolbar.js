@@ -95,4 +95,41 @@ export function initToolbar() {
         setTimeout(onResize, 50);
       });
   }
+
+  _initShortcuts();
+}
+
+// ── Keyboard shortcuts ────────────────────
+//   Tab  show / hide the sidebar (same as the ‹ button)
+//   O    open files (same as the Open button)
+// Ignored while typing in a field or while a dialog is open, so Tab still
+// moves between fields there.
+
+function _initShortcuts() {
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if (_typingInField(e.target) || _dialogOpen()) return;
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();   // don't move keyboard focus
+      document.getElementById('btn-collapse')?.click();
+    } else if (e.key === 'o' || e.key === 'O') {
+      e.preventDefault();
+      document.getElementById('btn-open-dials')?.click();
+    }
+  });
+}
+
+function _typingInField(t) {
+  return !!t && (t.isContentEditable
+    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+}
+
+/** True if the Open dialog, the Remote dialog or a colour picker is open. */
+function _dialogOpen() {
+  const shown = id => {
+    const el = document.getElementById(id);
+    return !!el && getComputedStyle(el).display !== 'none';
+  };
+  return shown('dlg-open') || shown('dlg-remote')
+    || !!document.querySelector('.cp-popup');
 }
