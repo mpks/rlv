@@ -102,6 +102,9 @@ export function initToolbar() {
 // ── Keyboard shortcuts ────────────────────
 //   Tab  show / hide the sidebar (same as the ‹ button)
 //   O    open files (same as the Open button)
+//   C    crystal frame on / off (same as the sidebar switch)
+//   N/P  next / previous experiment in the list becomes the active one
+//        (wraps around at the ends)
 // Ignored while typing in a field or while a dialog is open, so Tab still
 // moves between fields there.
 
@@ -115,8 +118,32 @@ function _initShortcuts() {
     } else if (e.key === 'o' || e.key === 'O') {
       e.preventDefault();
       document.getElementById('btn-open-dials')?.click();
+    } else if (e.key === 'c' || e.key === 'C') {
+      e.preventDefault();
+      document.getElementById('tog-crystal-frame')?.click();
+    } else if ('nNpP'.includes(e.key)) {
+      e.preventDefault();
+      _stepActiveExperiment(e.key.toLowerCase() === 'n' ? 1 : -1);
     }
   });
+}
+
+/**
+ * Make the next (step = 1) or previous (step = -1) experiment in the
+ * sidebar list the active one, wrapping around at the ends. Clicks its
+ * radio button, so it behaves exactly like clicking it.
+ */
+function _stepActiveExperiment(step) {
+  const radios = [...document.querySelectorAll('#exp-list .exp-radio')]
+    .filter(r => !r.disabled);
+  if (radios.length === 0) return;
+  const cur = radios.findIndex(r => r.checked);
+  const next = cur < 0
+    ? (step > 0 ? 0 : radios.length - 1)
+    : (cur + step + radios.length) % radios.length;
+  radios[next].click();
+  radios[next].closest('.exp-row')
+    ?.scrollIntoView({ block: 'nearest' });
 }
 
 function _typingInField(t) {
