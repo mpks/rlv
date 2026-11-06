@@ -35,6 +35,20 @@ export function setPivot(p) {
 }
 
 /**
+ * Apply matrix `m` (a rotation about the origin) to the whole view: camera
+ * position, view centre, "up" and rotation centre. Used when the spots
+ * themselves are turned by `m` (crystal frame on/off), so they look the
+ * same on screen afterwards.
+ */
+export function transformView(m) {
+  camera.position.applyMatrix3(m);
+  controls.target.applyMatrix3(m);
+  pivot.applyMatrix3(m);
+  camera.up.applyMatrix3(m).normalize();
+  camera.lookAt(controls.target);
+}
+
+/**
  * If true, the rotation centre is always the middle of the screen and
  * moves when the view is panned (TrackballControls' own behaviour).
  * If false (default), it stays fixed in the scene.
@@ -60,6 +74,10 @@ export function rotateAroundPivot(q) {
 
 let _pointsObject   = null;
 let _orthoZoom      = 1.0;
+// Size (bounding-box diagonal) of the point cloud that sets the view's
+// scale; zoom is relative to it. Measured when the cloud is replaced, not
+// every frame, so the scale doesn't change when spots move (crystal frame).
+let _sceneSize      = 0;
 let _running        = false;
 const _frameCallbacks = [];
 const _frameStartCallbacks = [];
@@ -227,7 +245,11 @@ function _loop() {
  * Replace the current points object.
  * Disposes the old one automatically.
  */
-export function setPointsObject(obj) {
+/**
+ * Show `obj` as the point cloud. With keepScale, the view's scale stays as
+ * it was (used when the same spots are just moved, e.g. crystal frame).
+ */
+export function setPointsObject(obj, { keepScale = false } = {}) {
   if (_pointsObject) {
     scene.remove(_pointsObject);
     _pointsObject.geometry.dispose();
@@ -235,6 +257,10 @@ export function setPointsObject(obj) {
   }
   _pointsObject = obj;
   if (obj) scene.add(obj);
+  if (obj && (!keepScale || !_sceneSize)) {
+    _sceneSize = new THREE.Box3().setFromObject(obj)
+      .getSize(new THREE.Vector3()).length() || 1;
+  }
 }
 
 export function getPointsObject() {
@@ -356,10 +382,7 @@ function _syncOrtho() {
   const wrap = _wrap();
   const aspect =
     wrap.clientWidth / wrap.clientHeight;
-  const bbox = new THREE.Box3()
-    .setFromObject(_pointsObject);
-  const size = bbox.getSize(
-    new THREE.Vector3()).length();
+  const size = _sceneSize || 1;
   const half = (size * 0.6) / _orthoZoom;
   camera.left   = -half * aspect;
   camera.right  =  half * aspect;

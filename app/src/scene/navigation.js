@@ -26,6 +26,7 @@ import {
   pivot, setPivot, rotateAroundPivot,
 } from './renderer.js';
 import { store, onChange } from '../state/store.js';
+import { expColorOf } from '../filters/colors.js';
 
 // ── Settings ──────────────────────────────
 
@@ -50,6 +51,7 @@ const ZOOM_PER_S = 2.0;       // W/S: zoom x2 per second
 
 export function initNavigation() {
   _initGizmo();
+  _initFrameBadge();
   _initCentreMarker();
   _initDoubleClick();
   _initOriginClick();
@@ -220,9 +222,56 @@ function _stepKeys() {
   }
 }
 
+// ── "Crystal frame" badge ─────────────────
+
+/**
+ * Badge under the gizmo while "Show in crystal frame" is on, in the colour
+ * of the active experiment (whose lattice stays still on screen), so it is
+ * clear which frame is shown. The gizmo keeps showing the lab axes.
+ * Clicking it switches back to the lab frame.
+ */
+function _initFrameBadge() {
+  const wrap = document.getElementById('canvas-wrap');
+  if (!wrap) return;
+  const el = document.createElement('div');
+  el.id = 'frame-badge';
+  el.innerHTML = '<span class="fb-dot"></span><span>Crystal frame</span>';
+  el.addEventListener('click', () =>
+    document.getElementById('tog-crystal-frame')?.click());
+  wrap.appendChild(el);
+  const update = () => {
+    el.style.display = store.overlays.crystalFrame ? 'flex' : 'none';
+    const a = store.activeExp;
+    const ds = a && store.datasets.find(d => d.id === a.datasetId);
+    const color = ds ? expColorOf(ds, a.expId) : '#f5a623';
+    el.style.setProperty('--fb-color', color);
+    const label = ds ? `exp ${ds.id}:${a.expId - (ds.expOffset ?? 0)}` : 'the active experiment';
+    el.title = `Crystal frame of ${label}, which stays still on screen. `
+      + 'The gizmo still shows the lab x, y, z. Click to go back to the lab frame.';
+  };
+  update();
+  onChange('overlays-changed', update);
+  onChange('active-exp-changed', update);
+  onChange('colors-changed', update);
+}
+
 // ── Axis gizmo ────────────────────────────
 
 let _gizmo = null;     // canvas
+// Where the lab axes point in the scene: null in the lab frame; in the
+// crystal frame, the active crystal's U (the matrix its spots were turned
+// by), so the gizmo agrees with the beam / rotation-axis arrows.
+let _labToScene = null;
+
+/** Set the lab-to-scene rotation for the gizmo (null = lab frame). */
+export function setGizmoFrame(m) {
+  _labToScene = m ? m.clone() : null;
+  if (_gizmo) {
+    _gizmo.title = _labToScene
+      ? 'Lab axes, as they lie in the active crystal\'s frame. Drag to rotate the view; click an axis to look along it.'
+      : 'Lab axes. Drag to rotate the view; click an axis to look along it.';
+  }
+}
 let _balls = [];       // [{ x, y, r, dir }] in CSS pixels, for clicks
 let _hover = null;
 
@@ -343,14 +392,19 @@ function _drawGizmo() {
   const inv = camera.quaternion.clone().invert();
   const ends = [];
   for (const a of AXES) {
+    // The lab axis as it lies in the scene
+    const sceneDir = _labToScene
+      ? a.dir.clone().applyMatrix3(_labToScene).normalize()
+      : a.dir.clone();
     for (const sign of [1, -1]) {
-      const v = a.dir.clone().multiplyScalar(sign).applyQuaternion(inv);
+      const dir = sceneDir.clone().multiplyScalar(sign);
+      const v = dir.clone().applyQuaternion(inv);
       ends.push({
         a, sign, depth: v.z,
         x: c + v.x * GIZMO_ARM,
         y: c - v.y * GIZMO_ARM,
         r: sign > 0 ? BALL_R : BALL_R_NEG,
-        dir: a.dir.clone().multiplyScalar(sign),
+        dir,
       });
     }
   }

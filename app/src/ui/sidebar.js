@@ -48,7 +48,10 @@ import {
   getPointsObject,
   setPointsObject,
   setPivotFollowsPan,
+  transformView,
 } from '../scene/renderer.js';
+import { setGizmoFrame }
+  from '../scene/navigation.js';
 import {
   initInspectionSphere,
   setInspectionD,
@@ -243,10 +246,18 @@ export function initFilterPanel() {
     togCF.addEventListener('click', () => {
       const on =
         togCF.classList.contains('on');
+      // Keep the active lattice still on screen: its spots are turned by
+      // its U (switching on) or back by U⁻¹ (switching off), so turn the
+      // camera the same way. Everything else then moves around it.
+      const U = _activeCrystalU();
       store.overlays.crystalFrame = on;
       _applyCrystalFrame(on);
+      if (U) transformView(on ? U : U.clone().invert());
+      _updateGizmoFrame();
     });
   }
+  // In the crystal frame the gizmo follows the active lattice's frame
+  onChange('active-exp-changed', _updateGizmoFrame);
 
   // Spot tooltips toggle
   const togTT =
@@ -974,6 +985,23 @@ function _getPoints() {
 
 // ── Crystal frame ─────────────────────────
 
+/**
+ * Static orientation matrix U of the active experiment's crystal, as the
+ * crystal-frame spots use it (rlv_io.js; RLV's U is DIALS's U⁻¹), or null.
+ */
+function _activeCrystalU() {
+  const a = store.activeExp;
+  if (!a) return null;
+  const ds = store.datasets.find(d => d.id === a.datasetId);
+  if (!ds) return null;
+  return ds.exptParser.getCrystal(a.expId - (ds.expOffset ?? 0))?.U ?? null;
+}
+
+/** Gizmo axes: lab frame, or the active crystal's frame. */
+function _updateGizmoFrame() {
+  setGizmoFrame(store.overlays.crystalFrame ? _activeCrystalU() : null);
+}
+
 function _applyCrystalFrame(on) {
   store.frozenExpts.clear();
 
@@ -1002,7 +1030,8 @@ function _applyCrystalFrame(on) {
   }
 
   const pts = buildPointCloud();
-  setPointsObject(pts);
+  // Same spots, moved: keep the view's scale (zoom) unchanged
+  setPointsObject(pts, { keepScale: true });
   recolour();
   applyFilters();
   buildExpList();

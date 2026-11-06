@@ -693,6 +693,37 @@ select {
   height: 96px !important;
 }
 
+/* "Crystal frame" badge, under the gizmo */
+/* --fb-color: the active experiment's colour, set by navigation.js */
+#frame-badge {
+  --fb-color: #f5a623;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  top: 104px;
+  left: 10px;
+  z-index: 1;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fb-color);
+  background: rgba(13, 13, 20, 0.85);
+  border: 1px solid var(--fb-color);
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+#frame-badge:hover { background: #1e1e2e; }
+#frame-badge .fb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fb-color);
+}
+
 /* Rotation centre: a red cross in the middle of the view */
 #rotation-centre {
   position: absolute;
