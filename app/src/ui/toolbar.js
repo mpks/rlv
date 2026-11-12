@@ -2,7 +2,7 @@
  * ui/toolbar.js
  */
 
-import { onResize, alignToVector, setSpin }
+import { onResize, alignToVector, setSpin, setSpinFactor }
   from '../scene/renderer.js';
 import { keysBlocked } from '../scene/navigation.js';
 import {
@@ -61,6 +61,7 @@ export function initToolbar() {
       spinBtn.classList.toggle('active', on);
       setSpin(on);
     });
+    _showSpinSpeed();
   }
 
   _wire('btn-align-rot',
@@ -111,7 +112,9 @@ export function initToolbar() {
 //   N/P  next / previous experiment in the list becomes the active one
 //        (wraps around at the ends)
 //   S    spin on / off
-//   R    fixed-axis rotation on / off (Esc: off)
+//   + / −  spin faster / slower (from 0.1× to 1.2× the default speed)
+//   R    fixed-axis rotation on / off (Esc: off); W / E and Ctrl+drag
+//        are in scene/axisRotate.js
 //   1/2/3  axis to rotate around (switches fixed-axis rotation on)
 //   V    set of axes: view → lab → experiment → a*b*c*
 // (Arrows and Shift + up / down: see scene/navigation.js)
@@ -152,6 +155,12 @@ function _initShortcuts() {
     } else if (e.key === 's' || e.key === 'S') {
       e.preventDefault();
       document.getElementById('btn-spin')?.click();
+    } else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      _stepSpinSpeed(1);
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      _stepSpinSpeed(-1);
     } else if (e.key === 'r' || e.key === 'R') {
       e.preventDefault();
       toggleAxisMode();
@@ -221,13 +230,37 @@ function _stepActiveExperiment(step) {
     ?.scrollIntoView({ block: 'nearest' });
 }
 
+// ── Spin speed (+ / −) ────────────────────
+
+// Multiples of the default speed. + and − step through these and stop at
+// the ends.
+const SPIN_SPEEDS = [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2];
+let _spinSpeedIdx = SPIN_SPEEDS.indexOf(1);
+
+function _stepSpinSpeed(step) {
+  const i = Math.max(0, Math.min(SPIN_SPEEDS.length - 1, _spinSpeedIdx + step));
+  if (i === _spinSpeedIdx) return;   // already at the limit
+  _spinSpeedIdx = i;
+  setSpinFactor(SPIN_SPEEDS[i]);
+  _showSpinSpeed();
+}
+
+/** Spin button: "Spin" at the default speed, otherwise e.g. "Spin 0.5×". */
+function _showSpinSpeed() {
+  const b = document.getElementById('btn-spin');
+  if (!b) return;
+  const f = SPIN_SPEEDS[_spinSpeedIdx];
+  b.textContent = f === 1 ? 'Spin' : `Spin ${f}×`;
+  b.title = `Spin (S). Speed ${f}× (+ / − to change)`;
+}
+
 // ── Shortcut list ("?") ───────────────────
 
 const SHORTCUTS = [
   ['Mouse', [
     ['Drag', 'rotate'],
     ['Shift + drag', 'roll'],
-    ['Drag, in fixed-axis mode', 'rotate around the yellow axis only'],
+    ['Ctrl + drag, fixed-axis mode', 'turn around the yellow axis'],
     ['Right-drag', 'pan'],
     ['Scroll', 'zoom'],
     ['Double-click a spot', 'rotate around it'],
@@ -242,10 +275,12 @@ const SHORTCUTS = [
     ['Shift + ↑ / ↓', 'zoom in / out'],
     ['R', 'fixed-axis rotation on / off'],
     ['1 / 2 / 3', 'axis to rotate around'],
+    ['W / E (hold)', 'turn around the yellow axis'],
     ['V', 'axes: view / lab / experiment / a*b*c*'],
     ['Esc', 'fixed-axis rotation off'],
     ['C', 'crystal frame on / off'],
     ['S', 'spin on / off'],
+    ['+ / −', 'spin faster / slower'],
     ['F', 'fullscreen on / off'],
     ['I', 'only indexed spots / all'],
     ['Shift + I', 'only integrated spots / all'],

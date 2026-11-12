@@ -199,6 +199,12 @@ export function setSpin(on) {
   _lastSpinTime = null;
 }
 
+// Spin speed as a multiple of the default 1.75 RPM (set with + / −).
+let _spinFactor = 1;
+export function setSpinFactor(f) {
+  _spinFactor = f;
+}
+
 // fn() → unit direction (scene coordinates) to spin around, or null for
 // the default (the screen's vertical). Set by fixed-axis rotation mode.
 let _spinAxisFn = null;
@@ -230,7 +236,7 @@ function _loop() {
     if (_lastSpinTime !== null) {
       const dt = Math.min(
         (now - _lastSpinTime) / 1000, 0.1);
-      const angle = _SPIN_RADS_PER_SEC * dt;
+      const angle = _SPIN_RADS_PER_SEC * _spinFactor * dt;
       // Turn around the fixed-axis-rotation axis if that mode is on,
       // otherwise the screen's current vertical, through the pivot.
       // Taken fresh every frame, so rotating the view while spinning
