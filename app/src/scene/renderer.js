@@ -199,6 +199,13 @@ export function setSpin(on) {
   _lastSpinTime = null;
 }
 
+// fn() → unit direction (scene coordinates) to spin around, or null for
+// the default (the screen's vertical). Set by fixed-axis rotation mode.
+let _spinAxisFn = null;
+export function setSpinAxisProvider(fn) {
+  _spinAxisFn = fn;
+}
+
 function _loop() {
   requestAnimationFrame(_loop);
   // Camera moves (keys, glides) first, so the controls see them.
@@ -224,13 +231,14 @@ function _loop() {
       const dt = Math.min(
         (now - _lastSpinTime) / 1000, 0.1);
       const angle = _SPIN_RADS_PER_SEC * dt;
-      // Turn around the screen's current vertical, through the pivot.
+      // Turn around the fixed-axis-rotation axis if that mode is on,
+      // otherwise the screen's current vertical, through the pivot.
       // Taken fresh every frame, so rotating the view while spinning
       // changes the spin axis with it.
-      const screenUp = new THREE.Vector3(0, 1, 0)
+      const axis = _spinAxisFn?.() ?? new THREE.Vector3(0, 1, 0)
         .applyQuaternion(camera.quaternion);
       rotateAroundPivot(new THREE.Quaternion()
-        .setFromAxisAngle(screenUp, angle));
+        .setFromAxisAngle(axis, angle));
     }
     _lastSpinTime = now;
   }

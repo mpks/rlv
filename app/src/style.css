@@ -5,6 +5,11 @@ html, body {
   padding: 0;
 }
 
+/* Dark page: built-in controls (the open list of a dropdown, scrollbars,
+   number-box arrows) use the system's dark look instead of a light one.
+   The desktop app's webview otherwise takes the OS's light theme. */
+html { color-scheme: dark; }
+
 /* ── Grid layout ─────────────────────── */
 body {
   display: grid;
@@ -265,6 +270,12 @@ select {
   color: #ccc;
   max-width: 100px;
   cursor: pointer;
+}
+
+/* The open list of a dropdown (some webviews ignore color-scheme here) */
+select option {
+  background: #1a1a26;
+  color: #ccc;
 }
 
 /* ── Toggle switch ───────────────────── */
@@ -691,6 +702,23 @@ select {
   /* override the global "canvas { width: 100% !important }" rule */
   width: 96px !important;
   height: 96px !important;
+}
+
+/* Fixed-axis rotation: the three axis buttons (x y z, beam rot ⊥, a* b* c*) */
+.tbtn-axis { min-width: 26px; padding: 3px 6px; text-align: center; }
+#btn-axis-frame { min-width: 76px; text-align: center; }
+
+/* Fixed-axis rotation: yellow ring on the rotation centre */
+#axis-rot-centre {
+  display: none;
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffd33d;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Shortcut list ("?"), top-right corner of the 3D view */

@@ -12,8 +12,8 @@
  *    cross). Double-click a spot to rotate around it: the view glides so
  *    the spot is in the middle. Click the green origin dot, or the
  *    "origin" button, to rotate around (0, 0, 0) again (the default).
- *  - Keys: W / S zoom in / out, A / D move left / right, Q / E move down
- *    / up, at a constant speed relative to the view (no acceleration).
+ *  - Keys: arrows move left / right / up / down, Shift + up / down zoom
+ *    in / out, at a constant speed (no acceleration).
  *
  * Scene coordinates are DIALS lab coordinates (times a fixed scale), so
  * the gizmo's x, y, z are the lab axes.
@@ -44,8 +44,8 @@ const GIZMO_DRAG_RADS_PER_PX = Math.PI / 180;  // 1° per pixel
 const ORIGIN_CLICK_PX = 10;   // how close a click must be to the green dot
 
 const CENTRE_ANIM_MS = 250;   // glide to a new rotation centre
-const MOVE_VIEWS_PER_S = 0.5; // A/D/Q/E: half a view width per second
-const ZOOM_PER_S = 2.0;       // W/S: zoom x2 per second
+const MOVE_VIEWS_PER_S = 0.5; // arrows: half a view width per second
+const ZOOM_PER_S = 2.0;       // Shift + up / down: zoom x2 per second
 
 // ── Init ──────────────────────────────────
 
@@ -165,33 +165,52 @@ function _initOriginClick() {
   });
 }
 
-// ── Keys: W A S D Q E ─────────────────────
+// ── Keys: arrows ──────────────────────────
 
+const ARROWS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
 const _held = new Set();
+let _shift = false;
 let _lastFrame = null;
 
-function _typingInField(e) {
+/**
+ * True if a key press should be left alone by the view's shortcuts: the
+ * user is typing in a text box, number box, list or slider (radio buttons,
+ * checkboxes and buttons don't count), or a dialog / colour picker is open.
+ */
+export function keysBlocked(e) {
   const t = e.target;
-  return t && (t.isContentEditable
-    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+  if (t?.isContentEditable) return true;
+  if (t?.tagName === 'TEXTAREA' || t?.tagName === 'SELECT') return true;
+  if (t?.tagName === 'INPUT'
+      && !['radio', 'checkbox', 'button', 'submit', 'reset']
+        .includes(t.type)) return true;
+  const shown = id => {
+    const el = document.getElementById(id);
+    return !!el && getComputedStyle(el).display !== 'none';
+  };
+  return shown('dlg-open') || shown('dlg-remote')
+    || !!document.querySelector('.cp-popup');
 }
 
 function _initKeys() {
   // TrackballControls has its own A/S/D modifier keys; switch them off so
-  // they don't clash with moving.
+  // they don't clash with the shortcuts.
   controls.keys = [];
 
   window.addEventListener('keydown', e => {
-    if (e.ctrlKey || e.metaKey || e.altKey || _typingInField(e)) return;
-    const k = e.key.toLowerCase();
-    if ('wasdqe'.includes(k) && k.length === 1) {
-      _held.add(k);
-      e.preventDefault();
+    _shift = e.shiftKey;
+    if (e.ctrlKey || e.metaKey || e.altKey || keysBlocked(e)) return;
+    if (ARROWS.includes(e.key)) {
+      _held.add(e.key);
+      e.preventDefault();   // don't scroll the page or change a radio button
     }
   });
-  window.addEventListener('keyup', e => _held.delete(e.key.toLowerCase()));
+  window.addEventListener('keyup', e => {
+    _shift = e.shiftKey;
+    _held.delete(e.key);
+  });
   // Releasing a key while the window is in the background is never seen.
-  window.addEventListener('blur', () => _held.clear());
+  window.addEventListener('blur', () => { _held.clear(); _shift = false; });
 
   onFrameStart(_stepKeys);
   onFrameStart(_stepGlide);
@@ -203,13 +222,14 @@ function _stepKeys() {
   _lastFrame = now;
   if (_held.size === 0 || dt === 0) return;
 
-  // Zoom
-  if (_held.has('w')) zoomBy(Math.pow(ZOOM_PER_S, dt));
-  if (_held.has('s')) zoomBy(Math.pow(ZOOM_PER_S, -dt));
+  const upKey = (_held.has('ArrowUp') ? 1 : 0) - (_held.has('ArrowDown') ? 1 : 0);
+
+  // Shift + up / down: zoom
+  if (_shift && upKey) zoomBy(Math.pow(ZOOM_PER_S, upKey * dt));
 
   // Move sideways / up-down, a fixed fraction of the view per second
-  const right = (_held.has('d') ? 1 : 0) - (_held.has('a') ? 1 : 0);
-  const up = (_held.has('e') ? 1 : 0) - (_held.has('q') ? 1 : 0);
+  const right = (_held.has('ArrowRight') ? 1 : 0) - (_held.has('ArrowLeft') ? 1 : 0);
+  const up = _shift ? 0 : upKey;
   if (right || up) {
     const viewWidth = (camera.right - camera.left) / camera.zoom;
     const step = viewWidth * MOVE_VIEWS_PER_S * dt;
@@ -262,6 +282,11 @@ let _gizmo = null;     // canvas
 // crystal frame, the active crystal's U (the matrix its spots were turned
 // by), so the gizmo agrees with the beam / rotation-axis arrows.
 let _labToScene = null;
+
+/** Lab-to-scene rotation (null = lab frame). */
+export function getGizmoFrame() {
+  return _labToScene;
+}
 
 /** Set the lab-to-scene rotation for the gizmo (null = lab frame). */
 export function setGizmoFrame(m) {

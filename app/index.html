@@ -453,8 +453,15 @@
   <span class="tbtn-label" style="margin-left:10px">Centre:</span>
   <button class="tbtn" id="btn-centre-origin"
           title="Rotate around the origin (0, 0, 0). Double-click a spot to rotate around it.">origin</button>
+  <span class="tbtn-label" style="margin-left:10px"
+        title="Fixed-axis rotation (R): drag turns the view around the yellow axis only">Rotate:</span>
+  <button class="tbtn" id="btn-axis-frame"
+          title="Set of axes: view, lab, experiment (beam, rotation axis), crystal a* b* c* (V)">View</button>
+  <button class="tbtn tbtn-axis" id="btn-axis-0">x</button>
+  <button class="tbtn tbtn-axis" id="btn-axis-1">y</button>
+  <button class="tbtn tbtn-axis" id="btn-axis-2">z</button>
   <div style="flex:1"></div>
-  <button class="tbtn" id="btn-spin" title="Spin (R)">Spin</button>
+  <button class="tbtn" id="btn-spin" title="Spin (S)">Spin</button>
   <button class="tbtn" id="btn-fullscreen"
           title="Fullscreen (F)">
     <svg id="fs-icon-expand"
@@ -502,7 +509,7 @@
   <span id="status-count"></span>
   <span>
     Drag: rotate · Shift+drag: roll · Right-drag: pan ·
-    Scroll / W S: zoom · A D Q E: move ·
+    Scroll / Shift+↑↓: zoom · Arrows: move · R: fixed-axis rotation ·
     Double-click: rotate around spot · ?: all shortcuts
   </span>
 </div>

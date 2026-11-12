@@ -4,6 +4,10 @@
 
 import { onResize, alignToVector, setSpin }
   from '../scene/renderer.js';
+import { keysBlocked } from '../scene/navigation.js';
+import {
+  initAxisRotate, toggleAxisMode, selectAxis, clearAxis, cycleFrame,
+} from '../scene/axisRotate.js';
 
 function _stopSpin() {
   setSpin(false);
@@ -96,6 +100,7 @@ export function initToolbar() {
       });
   }
 
+  initAxisRotate();
   _initShortcuts();
 }
 
@@ -105,7 +110,11 @@ export function initToolbar() {
 //   C    crystal frame on / off (same as the sidebar switch)
 //   N/P  next / previous experiment in the list becomes the active one
 //        (wraps around at the ends)
-//   R    spin on / off
+//   S    spin on / off
+//   R    fixed-axis rotation on / off (Esc: off)
+//   1/2/3  axis to rotate around (switches fixed-axis rotation on)
+//   V    set of axes: view → lab → experiment → a*b*c*
+// (Arrows and Shift + up / down: see scene/navigation.js)
 //   F    fullscreen on / off
 //   I    show only indexed spots      (again: all spots)
 //   Shift+I  show only integrated spots  (again: all spots)
@@ -113,8 +122,7 @@ export function initToolbar() {
 //   Shift+U  show all spots
 //   T    show / hide the active experiment's spots
 //   ?    show / hide the list of all shortcuts (Esc closes it)
-// Ignored while typing in a field or while a dialog is open, so Tab still
-// moves between fields there.
+// Ignored while typing in a field or while a dialog is open.
 
 function _initShortcuts() {
   window.addEventListener('keydown', e => {
@@ -123,8 +131,10 @@ function _initShortcuts() {
       _toggleShortcuts(false);
       return;
     }
-    if (_typingInField(e.target) || _dialogOpen()) return;
-    if (e.key === '?') {
+    if (keysBlocked(e)) return;
+    if (e.key === 'Escape') {
+      if (clearAxis()) e.preventDefault();
+    } else if (e.key === '?') {
       e.preventDefault();
       _toggleShortcuts();
     } else if (e.key === 'Tab' && !e.shiftKey) {
@@ -139,9 +149,18 @@ function _initShortcuts() {
     } else if ('nNpP'.includes(e.key)) {
       e.preventDefault();
       _stepActiveExperiment(e.key.toLowerCase() === 'n' ? 1 : -1);
-    } else if (e.key === 'r' || e.key === 'R') {
+    } else if (e.key === 's' || e.key === 'S') {
       e.preventDefault();
       document.getElementById('btn-spin')?.click();
+    } else if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      toggleAxisMode();
+    } else if (e.key === '1' || e.key === '2' || e.key === '3') {
+      e.preventDefault();
+      selectAxis(Number(e.key) - 1);
+    } else if (e.key === 'v' || e.key === 'V') {
+      e.preventDefault();
+      cycleFrame();
     } else if (e.key === 'f' || e.key === 'F') {
       e.preventDefault();
       document.getElementById('btn-fullscreen')?.click();
@@ -208,6 +227,7 @@ const SHORTCUTS = [
   ['Mouse', [
     ['Drag', 'rotate'],
     ['Shift + drag', 'roll'],
+    ['Drag, in fixed-axis mode', 'rotate around the yellow axis only'],
     ['Right-drag', 'pan'],
     ['Scroll', 'zoom'],
     ['Double-click a spot', 'rotate around it'],
@@ -217,11 +237,15 @@ const SHORTCUTS = [
     ['Gizmo: drag / click axis', 'rotate / look along that axis'],
   ]],
   ['Keys', [
-    ['W / S', 'zoom in / out'],
-    ['A / D', 'move left / right'],
-    ['Q / E', 'move down / up'],
+    ['← / →', 'move left / right'],
+    ['↑ / ↓', 'move up / down'],
+    ['Shift + ↑ / ↓', 'zoom in / out'],
+    ['R', 'fixed-axis rotation on / off'],
+    ['1 / 2 / 3', 'axis to rotate around'],
+    ['V', 'axes: view / lab / experiment / a*b*c*'],
+    ['Esc', 'fixed-axis rotation off'],
     ['C', 'crystal frame on / off'],
-    ['R', 'spin on / off'],
+    ['S', 'spin on / off'],
     ['F', 'fullscreen on / off'],
     ['I', 'only indexed spots / all'],
     ['Shift + I', 'only integrated spots / all'],
@@ -276,19 +300,4 @@ function _toggleShortcuts(show = !_shortcutsShown()) {
     wrap.appendChild(_shortcutsEl);
   }
   _shortcutsEl.style.display = show ? 'block' : 'none';
-}
-
-function _typingInField(t) {
-  return !!t && (t.isContentEditable
-    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
-}
-
-/** True if the Open dialog, the Remote dialog or a colour picker is open. */
-function _dialogOpen() {
-  const shown = id => {
-    const el = document.getElementById(id);
-    return !!el && getComputedStyle(el).display !== 'none';
-  };
-  return shown('dlg-open') || shown('dlg-remote')
-    || !!document.querySelector('.cp-popup');
 }
