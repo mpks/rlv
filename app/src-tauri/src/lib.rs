@@ -3,7 +3,9 @@
 // src/platform/desktop.js uses the pieces below to replace browser
 // features that work poorly in the Linux web engine (file chooser,
 // drag-and-drop, page zoom), and add opening files over SSH (remote.rs).
+// cli.rs reads the command line (rlv FILE.expt FILE.refl, --help, --version).
 
+mod cli;
 mod remote;
 
 /// Read a file chosen in the native dialog or dropped on the window and
@@ -22,13 +24,24 @@ fn file_exists(path: String) -> bool {
     std::path::Path::new(&path).is_file()
 }
 
+/// The (expt, refl) pairs given on the command line, to open at start.
+#[tauri::command]
+fn startup_files(files: tauri::State<cli::StartupFiles>) -> Vec<(String, String)> {
+    files.0.clone()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Before any window: --help / --version / mistakes print and exit here.
+    let startup = cli::parse();
+
     tauri::Builder::default()
+        .manage(startup)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             read_file,
             file_exists,
+            startup_files,
             remote::remote_hosts,
             remote::remote_list,
             remote::remote_read,

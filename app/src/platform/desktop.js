@@ -187,6 +187,22 @@ export async function initDesktop(onLoad) {
 
   const { initRemote } = await import('./remote.js');
   initRemote(invoke, onLoad);
+
+  // ── Files from the command line ─────────────────────────────
+  //
+  // rlv imported.expt strong.refl (checked and paired in cli.rs). The first
+  // pair replaces what's shown, the rest are added, as with Open.
+
+  try {
+    const pairs = await invoke('startup_files');
+    for (const [i, [exptPath, reflPath]] of pairs.entries()) {
+      await onLoad(await readAsFile(exptPath), await readAsFile(reflPath),
+        i === 0 ? 'replace' : 'add');
+    }
+  } catch (err) {
+    showError(err?.message || String(err));
+    console.error(err);
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────
