@@ -11,6 +11,8 @@
  * partner from the same folder (indexed.expt ↔ indexed.refl); see
  * platform/desktop.js. A browser page can't look into the folder, so
  * there the user picks both together instead.
+ *
+ * Esc closes the dialog, like Cancel.
  */
 
 let _pendingExpt = null;
@@ -45,6 +47,15 @@ export function initDialog(onLoad) {
   _el('dlg-load')
     ?.addEventListener('click',
       _onLoadClicked);
+
+  // Esc = Cancel. Capture phase, and the key goes no further, so the same
+  // Esc doesn't also leave fullscreen or fixed-axis rotation.
+  window.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !_isOpen()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    _closeDialog();
+  }, true);
 }
 
 /**
@@ -94,6 +105,11 @@ function _openDialog() {
   _el('dlg-refl-input').value = '';
   _el('dlg-add-mode').checked = true;
   _el('dlg-open').style.display = 'flex';
+}
+
+function _isOpen() {
+  const d = _el('dlg-open');
+  return !!d && d.style.display !== 'none' && d.style.display !== '';
 }
 
 function _closeDialog() {

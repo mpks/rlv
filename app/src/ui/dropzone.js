@@ -109,6 +109,15 @@ function _showDialog(expt, refl) {
   _dlg.style.display = 'flex';
 }
 
+// Esc = Cancel for the add / replace dialog. Capture phase, and the key
+// goes no further, so it doesn't also leave fullscreen etc.
+window.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !_dlg || _dlg.style.display !== 'flex') return;
+  e.preventDefault();
+  e.stopPropagation();
+  _dlg.style.display = 'none';
+}, true);
+
 function _buildDialog() {
   const overlay =
     document.createElement('div');
