@@ -274,12 +274,15 @@ function _injectStyle() {
     .rlvr-input { flex:1; min-width:0; box-sizing:border-box; width:100%;
       background:#0d0d14; border:1px solid #333; border-radius:4px;
       color:#ccc; font-size:11px; padding:4px 8px; }
-    .rlvr-chosen-field { color:#7ab8f5; }
-    .rlvr-btn { padding:4px 10px; background:transparent; border:1px solid #333;
-      border-radius:4px; color:#999; font-size:11px; cursor:pointer; white-space:nowrap; }
-    .rlvr-btn:hover:not(:disabled) { background:#1e1e2e; }
+    .rlvr-chosen-field { color:var(--text-1); }
+    .rlvr-btn { padding:4px 10px; background:var(--surface-3); border:1px solid var(--border);
+      border-radius:var(--radius); color:var(--text-2); font:inherit; font-size:11px; font-weight:500;
+      cursor:pointer; white-space:nowrap; transition:background .12s, border-color .12s, color .12s; }
+    .rlvr-btn:hover:not(:disabled) { background:#252534; border-color:var(--border-strong); color:var(--text-1); }
     .rlvr-btn:disabled { opacity:.5; cursor:default; }
-    .rlvr-primary { background:#152a42; border-color:#185FA5; color:#7ab8f5; font-weight:600; }
+    .rlvr-primary { background:var(--accent); border-color:transparent; color:#fff; font-weight:600;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.4); }
+    .rlvr-primary:hover:not(:disabled) { background:var(--accent-hover); border-color:transparent; color:#fff; }
     .rlvr-list { margin-top:6px; height:240px; overflow-y:auto; background:#0d0d14;
       border:1px solid #333; border-radius:4px; font-size:12px; }
     .rlvr-busy .rlvr-list { opacity:.5; }
@@ -288,7 +291,7 @@ function _injectStyle() {
     .rlvr-item .rlvr-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .rlvr-item .rlvr-size { color:#666; }
     .rlvr-file { color:#ddd; }
-    .rlvr-chosen { background:#152a42; color:#7ab8f5; }
+    .rlvr-chosen { background:var(--selected); color:var(--text-1); }
     .rlvr-msg { min-height:16px; font-size:11px; color:#888; margin-top:4px; }
     .rlvr-msg.rlvr-error { color:#e88; }
     .rlvr-check { display:flex; align-items:center; gap:6px; cursor:pointer;

@@ -10,12 +10,78 @@ html, body {
    The desktop app's webview otherwise takes the OS's light theme. */
 html { color-scheme: dark; }
 
+/* ── Colours and shapes ──────────────── */
+/* One accent colour, used only for the main action (Load, Add, Connect),
+   switches, sliders and focus. Selected buttons are a lighter grey, so
+   colour in the controls means "do this" or "on", and the data's colours
+   stand out. Change --accent here to retheme. */
+:root {
+  --accent: #3d7be0;
+  --accent-hover: #4d89ec;
+  --accent-press: #3369c4;
+  --accent-soft: rgba(61, 123, 224, 0.16);
+
+  --surface-0: #0d0d14;   /* page */
+  --surface-1: #111118;   /* panels, dialogs */
+  --surface-2: #15151f;   /* buttons */
+  --surface-3: #1d1d2a;   /* button hover */
+  --selected: #2c2c3c;    /* selected button */
+
+  --border: #2a2a3a;
+  --border-strong: #3a3a4e;
+
+  --text-1: #f2f2f7;      /* selected / important */
+  --text-2: #c8c8d2;
+  --text-3: #9a9aab;      /* button labels */
+
+  --radius: 6px;
+}
+
+/* Keyboard focus: a clear ring, only when moving with the keyboard */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ── Buttons (dialogs) ───────────────── */
+.btn {
+  display: inline-block;
+  padding: 6px 16px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btn:hover { background: #252534; border-color: var(--border-strong); color: var(--text-1); }
+.btn:active { background: var(--surface-2); }
+
+/* The main action of a dialog */
+.btn-primary {
+  color: #fff;
+  font-weight: 600;
+  background: var(--accent);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.btn-primary:hover { background: var(--accent-hover); border-color: transparent; color: #fff; }
+.btn-primary:active { background: var(--accent-press); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+/* Small button next to a field (Browse…) */
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
 /* ── Grid layout ─────────────────────── */
 body {
   display: grid;
   font-family: system-ui, sans-serif;
   font-size: 13px;
-  background: #0d0d14;
+  background: var(--surface-0);
   color: #ccc;
   grid-template-columns: 350px 1fr;
   grid-template-rows: 36px 1fr 22px;
@@ -169,7 +235,7 @@ body.toolbar-hidden {
 /* ── Inputs ──────────────────────────── */
 input[type=range] {
   width: 64px;
-  accent-color: #185FA5;
+  accent-color: var(--accent);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -231,7 +297,7 @@ input[type=number]::-webkit-outer-spin-button {
   position: absolute;
   top: 0;
   height: 100%;
-  background: #185FA5;
+  background: var(--accent);
   border-radius: 2px;
   pointer-events: none;
 }
@@ -242,8 +308,9 @@ input[type=number]::-webkit-outer-spin-button {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #bbb;
-  border: 2px solid #185FA5;
+  background: var(--text-1);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   transform: translate(-50%, -50%);
   cursor: ew-resize;
   box-sizing: border-box;
@@ -282,7 +349,7 @@ select option {
 .toggle {
   width: 28px;
   height: 16px;
-  background: #333;
+  background: var(--border-strong);
   border-radius: 8px;
   position: relative;
   cursor: pointer;
@@ -290,7 +357,7 @@ select option {
   transition: background .2s;
 }
 
-.toggle.on { background: #185FA5; }
+.toggle.on { background: var(--accent); }
 
 .toggle::after {
   content: '';
@@ -315,9 +382,15 @@ select option {
 }
 
 /* ── Radio button group ──────────────── */
+/* A segmented control: one box, the chosen option a raised grey tab */
 .radio-group {
   display: flex;
   gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  width: fit-content;
 }
 
 .radio-btn input[type=radio] {
@@ -330,24 +403,25 @@ select option {
   min-width: 55px;
   text-align: center;
   font-size: 11px;
-  color: #888;
-  background: #1a1a26;
-  border: 1px solid #333;
-  border-radius: 4px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: transparent;
+  border-radius: 5px;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
+  transition: background .12s, color .12s;
 }
 
 .radio-btn span:hover {
-  border-color: #555;
-  color: #ccc;
+  color: var(--text-1);
 }
 
 .radio-btn input:checked + span {
-  background: #152a42;
-  border-color: #185FA5;
-  color: #7ab8f5;
+  background: var(--selected);
+  color: var(--text-1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .category-counts {
@@ -406,8 +480,8 @@ select option {
 }
 
 .exp-radio:checked {
-  border-color: #185FA5;
-  background: #185FA5;
+  border-color: var(--accent);
+  background: var(--accent);
   box-shadow: inset 0 0 0 3px #111118;
 }
 
@@ -522,7 +596,7 @@ select option {
 }
 
 .cp-hex:focus {
-  border-color: #185FA5;
+  border-color: var(--accent);
 }
 
 .cp-opacity-wrap {
@@ -568,7 +642,7 @@ select option {
 }
 
 .cp-opacity-num:focus {
-  border-color: #185FA5;
+  border-color: var(--accent);
 }
 
 .cp-opacity-num::-webkit-outer-spin-button,
@@ -596,7 +670,7 @@ select option {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 3px;
-  color: #5a9fd4;
+  color: var(--text-2);
   font-size: 11px;
   padding: 1px 4px;
   margin-left: -4px;
@@ -615,7 +689,7 @@ select option {
 }
 
 .exp-user-label:focus {
-  border-color: #185FA5;
+  border-color: var(--accent);
   background: #1a1a26;
   color: #ccc;
 }
@@ -659,19 +733,22 @@ select option {
 }
 
 .tbtn {
+  font: inherit;
   font-size: 11px;
+  font-weight: 500;
   padding: 3px 9px;
-  border: 1px solid #333;
-  border-radius: 5px;
-  color: #999;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-3);
   cursor: pointer;
-  background: transparent;
+  background: var(--surface-2);
   white-space: nowrap;
-  transition: background .15s;
+  transition: background .12s, color .12s, border-color .12s;
   flex-shrink: 0;
 }
 
-.tbtn:hover { background: #1e1e2e; }
+.tbtn:hover { background: var(--surface-3); color: var(--text-1); }
+.tbtn:active { background: var(--surface-2); }
 
 /* A link styled like the toolbar buttons ("Get the app") */
 .tbtn-link {
@@ -687,9 +764,10 @@ select option {
 }
 
 .tbtn.active {
-  background: #152a42;
-  color: #7ab8f5;
-  border-color: #185FA5;
+  background: var(--selected);
+  color: var(--text-1);
+  border-color: var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* ── Canvas ──────────────────────────── */
@@ -875,10 +953,10 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(24, 95, 165, 0.18);
-  border: 2px dashed #185FA5;
+  background: var(--accent-soft);
+  border: 2px dashed var(--accent);
   font-size: 16px;
-  color: #7ab8f5;
+  color: var(--text-1);
   pointer-events: none;
   z-index: 5;
 }

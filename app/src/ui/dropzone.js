@@ -145,30 +145,13 @@ function _buildDialog() {
       <div style="display:flex;
                   justify-content:flex-end;
                   gap:8px">
-        <button id="dmd-cancel"
-          style="padding:6px 16px;
-                 background:transparent;
-                 border:1px solid #333;
-                 border-radius:4px;
-                 color:#999;cursor:pointer">
+        <button id="dmd-cancel" class="btn">
           Cancel
         </button>
-        <button id="dmd-replace"
-          style="padding:6px 16px;
-                 background:transparent;
-                 border:1px solid #333;
-                 border-radius:4px;
-                 color:#999;cursor:pointer">
+        <button id="dmd-replace" class="btn">
           Replace
         </button>
-        <button id="dmd-add"
-          style="padding:6px 16px;
-                 background:#152a42;
-                 border:1px solid #185FA5;
-                 border-radius:4px;
-                 color:#7ab8f5;
-                 cursor:pointer;
-                 font-weight:600">
+        <button id="dmd-add" class="btn btn-primary">
           Add
         </button>
       </div>
