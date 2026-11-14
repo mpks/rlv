@@ -22,6 +22,8 @@
 import { setPendingFile, hasPendingFile } from '../ui/dialog.js';
 import { handleDroppedFiles, setDragHighlight } from '../ui/dropzone.js';
 import { showError } from '../ui/statusbar.js';
+import { useWindowFullscreen } from '../ui/toolbar.js';
+import { keysBlocked } from '../scene/navigation.js';
 
 /** True when running inside the Tauri app. */
 export const isDesktop =
@@ -40,6 +42,7 @@ export async function initDesktop(onLoad) {
   // Loaded only in the app; in a browser these modules are never used.
   const { invoke } = await import('@tauri-apps/api/core');
   const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+  const { getCurrentWindow } = await import('@tauri-apps/api/window');
   const { open } = await import('@tauri-apps/plugin-dialog');
   const webview = getCurrentWebview();
 
@@ -143,6 +146,42 @@ export async function initDesktop(onLoad) {
     e.preventDefault();
     if (e.deltaY < 0) zoomIn(); else if (e.deltaY > 0) zoomOut();
   }, { passive: false });
+
+  // ── Fullscreen ──────────────────────────────────────────────
+  //
+  // The page's own fullscreen (requestFullscreen) crashes the app on Linux
+  // (WebKitGTK aborts). Make the whole window fullscreen instead, which
+  // works the same on every system.
+
+  const appWindow = getCurrentWindow();
+  let fullscreen = false;
+  const showFullscreen = useWindowFullscreen(async () => {
+    try {
+      fullscreen = !(await appWindow.isFullscreen());
+      await appWindow.setFullscreen(fullscreen);
+      showFullscreen(fullscreen);
+    } catch (err) {
+      showError(`Fullscreen failed: ${err}`);
+    }
+  });
+  // Also when the window manager changes it (e.g. F11, a keyboard shortcut)
+  appWindow.onResized(async () => {
+    const full = await appWindow.isFullscreen().catch(() => fullscreen);
+    if (full !== fullscreen) {
+      fullscreen = full;
+      showFullscreen(full);
+    }
+  });
+  // Esc leaves fullscreen, as in a browser. Skipped when Esc was already
+  // used for something else (closing a dialog, leaving fixed-axis mode).
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && fullscreen && !e.defaultPrevented
+        && !keysBlocked(e)) {
+      fullscreen = false;
+      appWindow.setFullscreen(false).catch(() => {});
+      showFullscreen(false);
+    }
+  });
 
   // ── Remote files over SSH ───────────────────────────────────
 

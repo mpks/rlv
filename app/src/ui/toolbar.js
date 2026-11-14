@@ -81,24 +81,15 @@ export function initToolbar() {
     document.getElementById('fs-icon-expand');
   const fsCompress =
     document.getElementById('fs-icon-compress');
+  _showFullscreen = full => {
+    if (fsExpand) fsExpand.style.display = full ? 'none' : '';
+    if (fsCompress) fsCompress.style.display = full ? '' : 'none';
+    setTimeout(onResize, 50);
+  };
   if (fsBtn) {
-    fsBtn.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement
-          .requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    });
-    document.addEventListener(
-      'fullscreenchange', () => {
-        const full = !!document.fullscreenElement;
-        fsExpand.style.display =
-          full ? 'none' : '';
-        fsCompress.style.display =
-          full ? '' : 'none';
-        setTimeout(onResize, 50);
-      });
+    fsBtn.addEventListener('click', () => _toggleFullscreen());
+    document.addEventListener('fullscreenchange',
+      () => _showFullscreen(!!document.fullscreenElement));
   }
 
   initAxisRotate();
@@ -131,6 +122,7 @@ function _initShortcuts() {
   window.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     if (e.key === 'Escape' && _shortcutsShown()) {
+      e.preventDefault();   // Esc used: don't also leave fullscreen
       _toggleShortcuts(false);
       return;
     }
@@ -228,6 +220,30 @@ function _stepActiveExperiment(step) {
   radios[next].click();
   radios[next].closest('.exp-row')
     ?.scrollIntoView({ block: 'nearest' });
+}
+
+// ── Fullscreen ────────────────────────────
+
+// In a browser: the page's own fullscreen (Esc leaves it). The desktop app
+// replaces this with the window's fullscreen (useWindowFullscreen), because
+// the page's fullscreen crashes the app on Linux (WebKitGTK).
+let _toggleFullscreen = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+};
+let _showFullscreen = () => {};
+
+/**
+ * Desktop app: make the fullscreen button / F use toggle() instead of the
+ * page's fullscreen. Returns a function to call with true / false whenever
+ * the window enters or leaves fullscreen, to update the button's icon.
+ */
+export function useWindowFullscreen(toggle) {
+  _toggleFullscreen = toggle;
+  return full => _showFullscreen(full);
 }
 
 // ── Spin speed (+ / −) ────────────────────
